@@ -1,0 +1,127 @@
+---
+title: "Hypothesis"
+author: "Allison Louie"
+date: "2024-05-22"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(summarytools) # for summarizing variables
+library(tidyverse)
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+#BiocManager::install("Biobase")
+library(Biobase)
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE)
+
+# folder for analysis
+work.dir <- here::here()
+
+# suppress warning messages for final rendering
+old.warn <- getOption("warn")
+options(warn=-1)
+```
+
+## Hypothesis
+
+# Hypothesis
+Prenatal exposure to phthalates, specifically measured by the concentrations of mono-ethyl phthalate (MEP) and di(2-ethylhexyl) phthalate (DEHP), is associated with an increased BMI z-score in children at age 6-11 years. This association will be controlled for dietary intake, physical activity, and socioeconomic status during pregnancy.
+
+# Background
+Prenatal exposure to phthalates, which are widely recognized as endocrine-disrupting chemicals, has been increasingly associated with adverse health outcomes in children. Research suggests that phthalates may influence body weight regulation and metabolic processes through their hormonal actions, which could predispose children to obesity. A recent study within the Ma'anshan birth cohort highlighted the impact of prenatal exposure to phthalates such as mono-ethyl phthalate (MEP) and di(2-ethylhexyl) phthalate (DEHP) on the trajectory of body mass index (BMI) in girls during the first six years of life. This study found that higher prenatal phthalate concentrations were associated with higher BMI trajectories, suggesting that exposure during pregnancy could play a significant role in shaping future obesity risk (Gao et al., 2022).
+
+Research from the INMA cohort study (Montazeri et al., 2023) has highlighted that exposure to multiple EDCs during pregnancy is associated with varied growth trajectories in children, from birth through childhood. Specifically, persistent chemicals like hexachlorobenzene (HCB), DDE (a breakdown product of DDT), and PCBs have been found to contribute significantly to accelerated BMI gain starting from lower or higher birth sizes. This study suggests that prenatal exposure to these chemicals may predispose children to faster postnatal growth rates, which are linked to higher risks of obesity and other metabolic disorders later in life.
+
+Moreover, a study by Yang et al. (2018) demonstrated that prenatal exposure to phthalates is linked to sex-specific differences in BMI trajectories from birth to adolescence, with third-trimester exposures being particularly critical. These findings underscore the potential for phthalates to disrupt metabolic health during critical windows of prenatal development, emphasizing the need for further exploration into how these exposures affect long-term health outcomes in children.
+
+Given the evidence, the hypothesis suggests that prenatal exposure to specific phthalates, MEP and DEHP, is associated with an increased risk of higher BMI in children, accounting for potential confounders such as socioeconomic status, maternal diet, and physical activity. This study aims to provide further insights into the mechanisms by which prenatal environmental exposures contribute to obesity, potentially guiding public health strategies aimed at reducing these exposures during pregnancy.
+
+# Variables:
+
+Exposure Variables: Concentrations of mono-ethyl phthalate (MEP) and di(2-ethylhexyl) phthalate (DEHP) in maternal urine during pregnancy.
+Outcome Variable: Child BMI Z-score measured at age 6-11 years.
+Covariates: Maternal socioeconomic status (SES), maternal diet during pregnancy, and child's physical activity.
+
+```{r load data and coddebook, echo=TRUE}
+load(paste0(work.dir, "/HELIX.RData"))
+kable(codebook, align="c")
+```
+
+## Data Summary for Covariates, Phenotypes, and Exposures {.tabset}
+
+### Data Summary Covariates
+```{r covariate summary, results='asis'}
+summarytools::view(dfSummary(covariates, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+### Data Summary Phenotypes
+```{r phenotype summary}
+summarytools::view(dfSummary(phenotype, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+### Data Summary Exposures: Outdoor exposures
+```{r Outdoor exposures summary, attr.output='style="max-height: 100px;"',}
+selectExposures <- codebook$variable_name[codebook$domain=="Outdoor exposures"]
+summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+### Data Summary Exposures: Indoor air
+```{r Indoor air summary, attr.output='style="max-height: 100px;"',}
+selectExposures <- codebook$variable_name[codebook$domain=="Indoor air"]
+summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+### Data Summary Exposures: Lifestyles
+```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
+selectExposures <- codebook$variable_name[codebook$domain=="Lifestyles"]
+summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+### Data Summary Exposures: Chemicals
+```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
+selectExposures <- codebook$variable_name[codebook$domain=="Chemicals"]
+summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+## Proteomic Data 
+First 10 rows and columns of the proteomic data
+```{r proteomic data, echo=TRUE}
+load(paste0(work.dir, "/proteome.RData"))
+kable(proteome.d[1:10,1:10], align="c", digits=2, format="pipe")
+
+
+```
+
+## Metabolomic Urine Data
+First 10 rows and columns of the metabolomic urine data
+```{r metabolomic urine data, echo=TRUE}
+load(paste0(work.dir, "/metabol_urine.RData"))
+kable(metabol_urine.d[1:10,1:10], align="c", digits=2, format="pipe")
+
+
+```
+
+## Metabolomic Serum Data 
+First 10 rows and columns of the metabolomic serum data
+```{r metabolomic serum data, echo=TRUE}
+load(paste0(work.dir, "/metabol_serum.RData"))
+kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
+
+
+```
+
+## Genomic Data 
+First 10 rows and columns of the genomic data
+```{r genomic data, echo=TRUE}
+load(paste0(work.dir, "/genome.RData"))
+kable(G[1:10,1:10], align="c", digits=2, format="pipe")
+
+
+```
