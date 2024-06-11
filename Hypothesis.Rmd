@@ -1,8 +1,7 @@
 ---
-a---
-title: "Hypothesis"
+title: "PM606 Project"
 author: "Allison Louie"
-date: "2024-05-22"
+date: "2024-06-06"
 output:
   html_document:
     toc: true
@@ -13,374 +12,190 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
-library(summarytools) # for summarizing variables
+library(summarytools)
+library(kableExtra)
 library(tidyverse)
-install.packages("BiocManager")
-BiocManager::install("Biobase")
 library(Biobase)
+library(plotly)
+library(corrplot)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
-
-# folder for analysis
 work.dir <- here::here()
-
-# suppress warning messages for final rendering
 old.warn <- getOption("warn")
 options(warn=-1)
 ```
 
 # Hypothesis
 
-Prenatal exposure to lifestyle and chemicals are associated with variations in BMI z-score in children at age 6-11 years. This association will be controlled for dietary intake, physical activity, and socioeconomic status during and after pregnancy. The serum metabolomic data would be helpful to look at in terms of long-term metabolic status and systemic health related to chronic exposure effects, which could be linked to weight regulation and obesity.
+Postnatal environmental exposures, particularly those found in household products and dietary intake, along with specific serum metabolomics profiles, are significantly associated with the BMI Z-score of children aged 6-11 years. Higher concentrations of certain metabolites in serum, reflecting exposure to chemical classes or metals, will correlate with variations in BMI Z-score, controlling for age and other relevant covariates. High-dimensional metabolomics data can reveal comprehensive biochemical profiles that reflect environmental exposures and metabolic states. Not only that, but some metabolites associated with chemical exposures and dietary patterns can serve as biomarkers for the risk of developing obesity.
 
 # Background
 
-Prenatal exposure to phthalates, which are widely recognized as endocrine-disrupting chemicals, has been increasingly associated with adverse health outcomes in children. Research suggests that phthalates may influence body weight regulation and metabolic processes through their hormonal actions, which could predispose children to obesity. A recent study within the Ma'anshan birth cohort highlighted the impact of prenatal exposure to phthalates such as mono-ethyl phthalate (MEP) and di(2-ethylhexyl) phthalate (DEHP) on the trajectory of body mass index (BMI) in girls during the first six years of life. This study found that higher prenatal phthalate concentrations were associated with higher BMI trajectories, suggesting that exposure during pregnancy could play a significant role in shaping future obesity risk (Gao et al., 2022).
+Research indicates that postnatal exposure to endocrine-disrupting chemicals (EDCs) such as phthalates, bisphenol A (BPA), and polychlorinated biphenyls (PCBs) can significantly influence body weight and metabolic health ([Junge et al., 2018](https://clinicalepigeneticsjournal.biomedcentral.com/articles/10.1186/s13148-018-0478-z)). These chemicals, commonly found in household products and absorbed through dietary intake, are linked to detrimental effects on body weight and metabolic health in children. This hormonal interference can lead to an increased body mass index (BMI) in children, suggesting a potential pathway through which exposure to these chemicals contributes to the development of obesity.
 
-Research from the INMA cohort study (Montazeri et al., 2023) has highlighted that exposure to multiple EDCs during pregnancy is associated with varied growth trajectories in children, from birth through childhood. Specifically, persistent chemicals like hexachlorobenzene (HCB), DDE (a breakdown product of DDT), and PCBs have been found to contribute significantly to accelerated BMI gain starting from lower or higher birth sizes. This study suggests that prenatal exposure to these chemicals may predispose children to faster postnatal growth rates, which are linked to higher risks of obesity and other metabolic disorders later in life.
+A longitudinal study on Japanese children examined the impact of postnatal exposure (first two years of life) to p,p’*-*dichlorodiphenyltrichloroethane (p,p’*-*DDT) and p,p’*-*dichlorodiphenyldichloroethylene (p,p’*-*DDE) through breastfeeding ([Plouffe et al., 2020](https://ehjournal.biomedcentral.com/articles/10.1186/s12940-020-00603-z)). The findings revealed that higher levels of these chemicals in breast milk were associated with increased BMI at 42 months of age. DDT and DDE may interfere with hormonal pathways related to growth and development. These chemicals can mimic or disrupt hormones that regulate metabolism and fat accumulation. This study highlights the importance of understanding how persistent organic pollutants can affect early childhood growth and development.
 
-Moreover, a study by Yang et al. (2018) demonstrated that prenatal exposure to phthalates is linked to sex-specific differences in BMI trajectories from birth to adolescence, with third-trimester exposures being particularly critical. These findings underscore the potential for phthalates to disrupt metabolic health during critical windows of prenatal development, emphasizing the need for further exploration into how these exposures affect long-term health outcomes in children.
+The study by [Harley et al. (2013)](https://pubmed.ncbi.nlm.nih.gov/23416456/) investigates the association between prenatal and postnatal Bisphenol A (BPA) exposure and various body composition metrics in children aged 9 years from the CHAMACOS cohort. The study found that higher prenatal BPA exposure was linked to a decrease in BMI and body fat percentages in girls but not boys, suggesting sex-specific effects. Conversely, BPA levels measured at age 9 were positively associated with increased adiposity in both genders, highlighting the different impacts of exposure timing on childhood development.
 
-This study aims to provide further insights into the mechanisms by which prenatal environmental exposures contribute to obesity, potentially guiding public health strategies aimed at reducing these exposures during pregnancy.
+The 2022 study [2022 study by Uldbjerg et al.](https://academic.oup.com/humupd/article/28/5/687/6573218) explored the effects of combined exposures to multiple EDCs, suggesting that mixtures of these chemicals can have additive or synergistic effects on BMI and obesity risk. Humans are typically exposed to a mixture of chemicals rather than individual EDCs, making it crucial to understand how these mixtures might interact. The research highlighted that the interaction between different EDCs can lead to additive (where the effects simply add up) or even synergistic (where the combined effect is greater than the sum of their separate effects) outcomes. These interactions can significantly amplify the risk factors associated with obesity and metabolic disorders in children. The dose-response relationship found that even low-level exposure to multiple EDCs could result in significant health impacts due to their combined effects.
 
-# Variables:
-
-### Exposure Variables:
-
-#### Lifestyle:
-
-##### Pregnancy
-
--   prenatal alcohol
-
--   cereal consumption during pregnancy (times/week)
-
--   dairy consumption during pregnancy (times/week)
-
--   fast food consumption during pregnancy (times/week)
-
--   fish consumption during pregnancy (times/week)
-
--   folic acid supplementation during pregnancy
-
--   fruit consumption during pregnancy (times/week)
-
--   legume consumption during pregnancy (times/week)
-
--   meat consumption during pregnancy (times/week)
-
--   Walking and/or cycling activity during pregnancy (frequency)
-
--   Exercise or sport activity during pregnancy (frequency)
-
--   vegetables consumption during pregnancy (times/week)
-
-##### Postnatal
-
--   Food group: bakery products (hs_cookies + hs_pastries)
-
--   Food group: beverages (hs_dietsoda+hs_soda)
-
--   Food group: breakfast cereal (hs_sugarcer+hs_othcer)
-
--   Drinks a caffeinated or Ã¦energy drink (eg coca-cola, diet-coke, redbull)
-
--   Food group: dairy (hs_cheese + hs_milk + hs_yogurt+ hs_probiotic+ hs_desert)
-
--   Visits a fast food restaurant/take away
-
--   Sum of KIDMED indices, without index9
-
--   Clean & Over-reporting of Moderate-to-Vigorous Physical Activity (min/day)
-
--   Eats organic food
-
--   Food group: processed meat (hs_coldmeat+hs_ham)
-
--   Eats a Ã¦ready-made supermarket meal
-
--   sedentary behaviour (min/day)
-
--   Food group: bread (hs_darkbread+hs_whbread)
-
--   Food group: cereal (hs_darkbread + hs_whbread + hs_rice_pasta + hs_sugarcer + hs_othcer + hs_rusks)
-
--   Food group: fish and seafood (hs_canfish+hs_oilyfish+hs_whfish+hs_seafood)
-
--   Food group: fruits (hs_canfruit+hs_dryfruit+hs_freshjuice+hs_fruits)
-
--   Food group: Added fat
-
--   Food group: meat (hs_coldmeat+hs_ham+hs_poultry+hs_redmeat)
-
--   Food group: potatoes (hs_frenchfries+hs_potatoes)
-
--   Food group: sweets (hs_choco + hs_sweets + hs_sugar)
-
--   Food group: vegetables (hs_cookveg+hs_rawveg)
-
--   Food group: yogurt (hs_yogurt+hs_probiotic)
-
--   Total hours of sleep (mean weekdays and night)
-
-#### Chemicals:
-
-##### Pregnancy
-
--   Arsenic (As) in mother
-
--   Cadmium (Cd) in mother
-
--   Cobalt (Co) in mother
-
--   Caesium (Cs) in mother
-
--   Copper (Cu) in mother
-
--   Mercury (Hg) in mother
-
--   Manganese (Mn) in mother
-
--   Molybdenum (Mo) in mother
-
--   Lead (Pb) in mother
-
--   Dichotomous variable of thallium (Tl) in mother
-
--   Dichlorodiphenyldichloroethylene (DDE) in mother adjusted for lipids
-
--   Dichlorodiphenyltrichloroethane (DDT) in mother adjusted for lipids
-
--   Hexachlorobenzene (HCB) in mother adjusted for lipids
-
--   Polychlorinated biphenyl-118 (PCB-118) in mother adjusted for lipids
-
--   Polychlorinated biphenyl-138 (PCB-138) in mother adjusted for lipids
-
--   Polychlorinated biphenyl-153 (PCB-153) in mother adjusted for lipids
-
--   Polychlorinated biphenyl-170 (PCB-170) in mother adjusted for lipids
-
--   Polychlorinated biphenyl-180 (PCB-180) in mother adjusted for lipids
-
--   Sum of PCBs in mother adjusted for lipids (5 cohorts)
-
--   Diethyl phosphate (DEP) in mother adjusted for creatinine
-
--   Diethyl thiophosphate (DETP) in mother adjusted for creatinine
-
--   Dimethyl phosphate (DMP) in mother adjusted for creatinine
-
--   Dimethyl thiophosphate (DMTP) in child adjusted for creatinine
-
--   Polybrominated diphenyl ether-153 (PBDE-153) in mother adjusted for lipids
-
--   Polybrominated diphenyl ether-47 (PBDE-47) in mother adjusted for lipids
-
--   Perfluorohexane sulfonate (PFHXS) in mother
-
--   Perfluorononanoate (PFNA) in mother
-
--   Perfluorooctanoate (PFOA) in mother
-
--   Perfluorooctane sulfonate (PFOS) in mother
-
--   Perfluoroundecanoate (PFUNDA) in mother
-
--   Bisphenol A (BPA) in mother adjusted for creatinine
-
--   N-Butyl paraben (BUPA) in mother adjusted for creatinine
-
--   Ethyl paraben (ETPA) in mother adjusted for creatinine
-
--   Methyl paraben (MEPA) in mother adjusted for creatinine
-
--   Oxybenzone (OXBE) in mother adjusted for creatinine
-
--   Propyl paraben (PRPA) in mother adjusted for creatinine
-
--   Triclosan (TRCS) in mother adjusted for creatinine
-
--   Mono benzyl phthalate (MBzP) in mother adjusted for creatinine
-
--   Mono-2-ethyl 5-carboxypentyl phthalate (MECPP) in mother adjusted for creatinine
-
--   Mono-2-ethyl-5-hydroxyhexyl phthalate (MEHHP) in mother adjusted for creatinine
-
--   Mono-2-ethylhexyl phthalate (MEHP) in mother adjusted for creatinine
-
--   Mono-2-ethyl-5-oxohexyl phthalate (MEOHP) in mother adjusted for creatinine
-
--   Monoethyl phthalate (MEP) in mother adjusted for creatinine
-
--   Mono-iso-butyl phthalate (MiBP) in mother adjusted for creatinine
-
--   Mono-n-butyl phthalate (MnBP) in mother adjusted for creatinine
-
--   Mono-4-methyl-7-hydroxyoctyl phthalate (OHMiNP) in mother adjusted for creatinine
-
--   Mono-4-methyl-7-oxooctyl phthalate (OXOMiNP) in mother adjusted for creatinine
-
--   Sum of DEHP metabolites (Âµg/g) in mother adjusted for creatinine
-
--   maternal active Tobacco Smoke pregnancy mean nb cig/day
-
--   Categorical variable of cotinine in mother
-
-##### Postnatal
-
--   Arsenic (As) in child
-
--   Cadmium (Cd) in child
-
--   Cobalt (Co) in child
-
--   Caesium (Cs) in child
-
--   Copper (Cu) in child
-
--   Mercury (Hg) in child
-
--   Manganese (Mn) in child
-
--   Molybdenum (Mo) in child
-
--   Lead (Pb) in child
-
--   Dichotomous variable of thallium (Tl) in child
-
--   Dichlorodiphenyldichloroethylene (DDE) in child adjusted for lipids
-
--   Dichlorodiphenyltrichloroethane (DDT) in child adjusted for lipids
-
--   Hexachlorobenzene (HCB) in child adjusted for lipids
-
--   Polychlorinated biphenyl -118 (PCB-118) in child adjusted for lipids
-
--   Polychlorinated biphenyl-138 (PCB-138) in child adjusted for lipids
-
--   Polychlorinated biphenyl-153 (PCB-153) in child adjusted for lipids
-
--   Polychlorinated biphenyl-170 (PCB-170) in child adjusted for lipids
-
--   Polychlorinated biphenyl-180 (PCB-180) in child adjusted for lipids
-
--   Sum of PCBs in child adjusted for lipids (4 cohorts)
-
--   Diethyl phosphate (DEP) in child adjusted for creatinine
-
--   Diethyl thiophosphate (DETP) in child adjusted for creatinine
-
--   Dichotomous variable of dimethyl dithiophosphate (DMDTP) in child
-
--   Dimethyl phosphate (DMP) in child adjusted for creatinine
-
--   Polybrominated diphenyl ether-153 (PBDE-153) in child adjusted for lipids
-
--   Polybrominated diphenyl ether-47 (PBDE-47) in child adjusted for lipids
-
--   Perfluorohexane sulfonate (PFHXS) in child
-
--   Perfluorononanoate (PFNA) in child
-
--   Perfluorooctanoate (PFOA) in child
-
--   Perfluorooctane sulfonate (PFOS) in child
-
--   Perfluoroundecanoate (PFUNDA) in child
-
--   Bisphenol A (BPA) in child adjusted for creatinine
-
--   N-Butyl paraben (BUPA) in child adjusted for creatinine
-
--   Ethyl paraben (ETPA) in child adjusted for creatinine
-
--   Methyl paraben (MEPA) in child adjusted for creatinine
-
--   Oxybenzone (OXBE) in child adjusted for creatinine
-
--   Propyl paraben (PRPA) in child adjusted for creatinine
-
--   Triclosan (TRCS) in child adjusted for creatinine
-
--   Mono benzyl phthalate (MBzP) in child adjusted for creatinine
-
--   Mono-2-ethyl 5-carboxypentyl phthalate (MECPP) in child adjusted for creatinine
-
--   Mono-2-ethyl-5-hydroxyhexyl phthalate (MEHHP) in child adjusted for creatinine
-
--   Mono-2-ethylhexyl phthalate (MEHP) in child adjusted for creatinine
-
--   Mono-2-ethyl-5-oxohexyl phthalate (MEOHP) in child adjusted for creatinine
-
--   Monoethyl phthalate (MEP) in child adjusted for creatinine
-
--   Mono-iso-butyl phthalate (MiBP) in child adjusted for creatinine
-
--   Mono-n-butyl phthalate (MnBP) in child adjusted for creatinine
-
--   Mono-4-methyl-7-hydroxyoctyl phthalate (OHMiNP) in child adjusted for creatinine
-
--   Mono-4-methyl-7-oxooctyl phthalate (OXOMiNP) in child adjusted for creatinine
-
--   Sum of DEHP metabolites (Âµg/g) in child adjusted for creatinine
-
--   Family affluence score
-
--   scoial capital: family friends
-
--   How many people live in your home?
-
--   social capital: structural
-
--   Dichotomous variable of cotinine in child
-
--   Global exposure of the child to ETS (2 categories)
-
--   Tobacco Smoke status of parents (both)
-
-### Covariates
-
--   Maternal pre-pregnancy body mass index (kg/m2)
-
--   Height of the child at 6-11 years old (m)
-
--   Weight of the child at 6-11 years old (kg)
-
--   Maternal weight gain during pregnancy (kg)
-
--   Gestational age at birth (week)
-
--   Child sex (female / male)
-
--   Year of birth (2003 to 2009)
-
--   Maternal age (years)
-
--   Cohort of inclusion (1 to 6)
-
--   Maternal education (1: primary school, 2:secondary school, 3:university degree or higher)
-
--   Are the parents native from the country of the cohort (0: no native parent, 1:only one native parent, 2: both parents native)
-
--   Parity before index pregnancy (0: nulliparous, 1:primiparous, 2:multiparous)
-
--   Child age at examination (years)
-
-### Outcome Variable:
-
-Child BMI Z-score measured at age 6-11 years.
+These studies collectively illustrate the critical role of environmental EDCs in shaping metabolic health outcomes in children, highlighting the necessity for ongoing research and policy intervention to mitigate these risks.
 
 # Data Description
 
-Data for this study were derived from the six HELIX cohorts, encompassing over 31,472 mother-child pairs at different pregnancy stages from 1999 to 2010. The analysis focuses on 1,301 mother-children pairs from the HELIX subcohort, which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records during pregnancy and concentrations of various chemicals like BPA and PCBs in maternal blood samples. Child BMI Z-scores were calculated based on WHO growth standards. Preliminary descriptive analysis showed a balanced distribution across genders and a wide range of socioeconomic statuses.
+This study will utilize data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy  and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
 
-```{r load data and coddebook, echo=TRUE}
+```{r load data and codebook, echo=TRUE}
 load(paste0(work.dir, "/HELIX.RData"))
-kable(codebook, align="c")
+filtered_codebook <- codebook %>%
+  filter(domain %in% c("Chemicals", "Lifestyles") & period == "Postnatal" & subfamily != "Allergens")
+kable(filtered_codebook, align = "c", format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
 ```
 
-## Data Summary for Covariates, Phenotypes, and Exposures {.tabset}
+## Data Summary for Exposures, Covariates, and Outcome {.tabset}
+
+### Data Summary Exposures: Lifestyles
+
+```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
+Lifestyle_Exposures <- filtered_codebook$variable_name[filtered_codebook$domain=="Lifestyles"]
+lifestyle_exposome <- exposome %>%
+  select(all_of(Lifestyle_Exposures))
+summarytools::view(dfSummary(lifestyle_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+```{r}
+#separate numeric and categorical data
+numeric_lifestyle <- lifestyle_exposome %>% 
+  select(where(is.numeric))
+
+numeric_lifestyle_long <- pivot_longer(
+  numeric_lifestyle,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_numerical_vars <- unique(numeric_lifestyle_long$variable)
+
+num_plots <- lapply(unique_numerical_vars, function(var) {
+  data <- filter(numeric_lifestyle_long, variable == var)
+  p <- ggplot(data, aes(x = value)) +
+    geom_histogram(bins = 30, fill = "blue") +
+    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
+  print(p)
+  return(p)
+})
+
+categorical_lifestyle <- lifestyle_exposome %>% 
+  select(where(is.factor))
+
+categorical_lifestyle_long <- pivot_longer(
+  categorical_lifestyle,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_categorical_vars <- unique(categorical_lifestyle_long$variable)
+categorical_plots <- lapply(unique_categorical_vars, function(var) {
+  data <- filter(categorical_lifestyle_long, variable == var)
+  
+  p <- ggplot(data, aes(x = value, fill = value)) +
+    geom_bar(stat = "count") +
+    labs(title = paste("Distribution of", var), x = var, y = "Count")
+  
+  print(p)
+  return(p)
+})
+```
+
+```{r}
+numeric_lifestyle <- select_if(lifestyle_exposome, is.numeric)
+cor_matrix <- cor(numeric_lifestyle, method = "pearson")
+cor_matrix <- cor(numeric_lifestyle, method = "spearman")
+corrplot(cor_matrix, method = "circle")
+```
+
+### Data Summary Exposures: Chemicals
+
+```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
+Chemical_Exposures <- filtered_codebook$variable_name[filtered_codebook$domain=="Chemicals"]
+chemical_exposome <- exposome %>%
+  select(all_of(Chemical_Exposures))
+summarytools::view(dfSummary(chemical_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```
+
+```{r}
+#separate numeric and categorical data
+numeric_chemical <- chemical_exposome %>% 
+  select(where(is.numeric))
+
+numeric_chemical_long <- pivot_longer(
+  numeric_chemical,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_numerical_vars <- unique(numeric_chemical_long$variable)
+
+num_plots <- lapply(unique_numerical_vars, function(var) {
+  data <- filter(numeric_chemical_long, variable == var)
+  p <- ggplot(data, aes(x = value)) +
+    geom_histogram(bins = 30, fill = "blue") +
+    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
+  print(p)
+  return(p)
+})
+
+categorical_chemical <- chemical_exposome %>% 
+  select(where(is.factor))
+
+categorical_chemical_long <- pivot_longer(
+  categorical_lifestyle,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_categorical_vars <- unique(categorical_chemical_long$variable)
+categorical_plots <- lapply(unique_categorical_vars, function(var) {
+  data <- filter(categorical_chemical_long, variable == var)
+  
+  p <- ggplot(data, aes(x = value, fill = value)) +
+    geom_bar(stat = "count") +
+    labs(title = paste("Distribution of", var), x = var, y = "Count")
+  
+  print(p)
+  return(p)
+})
+```
+
+
+```{r}
+numeric_chemical <- select_if(chemical_exposome, is.numeric)
+cor_matrix <- cor(numeric_chemical, method = "pearson")
+cor_matrix <- cor(numeric_chemical, method = "spearman")
+custom_color_scale <- list(
+  c(0, "darkred"),    
+  c(0.5, "white"), 
+  c(1, "darkblue")
+)
+
+plot_ly(
+  z = cor_matrix, 
+  x = colnames(cor_matrix), 
+  y = colnames(cor_matrix), 
+  type = "heatmap",
+  colorscale = custom_color_scale
+) %>%
+layout(
+  title = "Correlation Matrix",
+  xaxis = list(tickangle = -90),
+  yaxis = list(side = "left")
+)
+```
 
 ### Data Summary Covariates
 
@@ -388,60 +203,66 @@ kable(codebook, align="c")
 summarytools::view(dfSummary(covariates, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-### Data Summary Phenotypes
+```{r}
+#separate numeric and categorical data
+numeric_covariates <- covariates %>% 
+  select(where(is.numeric))
+
+numeric_covariates_long <- pivot_longer(
+  numeric_covariates,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_numerical_vars <- unique(numeric_covariates_long$variable)
+
+num_plots <- lapply(unique_numerical_vars, function(var) {
+  data <- filter(numeric_covariates_long, variable == var)
+  p <- ggplot(data, aes(x = value)) +
+    geom_histogram(bins = 30, fill = "blue") +
+    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
+  print(p)
+  return(p)
+})
+
+categorical_covariates <- covariates %>% 
+  select(where(is.factor))
+
+categorical_covariates_long <- pivot_longer(
+  categorical_covariates,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_categorical_vars <- unique(categorical_covariates_long$variable)
+categorical_plots <- lapply(unique_categorical_vars, function(var) {
+  data <- filter(categorical_covariates_long, variable == var)
+  
+  p <- ggplot(data, aes(x = value, fill = value)) +
+    geom_bar(stat = "count") +
+    labs(title = paste("Distribution of", var), x = var, y = "Count")
+  
+  print(p)
+  return(p)
+})
+```
+
+
+```{r}
+numeric_covariate <- select_if(covariates, is.numeric)
+cor_matrix <- cor(numeric_covariate, method = "pearson")
+cor_matrix <- cor(numeric_covariate, method = "spearman")
+corrplot(cor_matrix, method = "circle")
+```
+
+### Data Summary Outcome: Phenotype
 
 ```{r phenotype summary}
-summarytools::view(dfSummary(phenotype, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
-```
-
-### Data Summary Exposures: Outdoor exposures
-
-```{r Outdoor exposures summary, attr.output='style="max-height: 100px;"',}
-selectExposures <- codebook$variable_name[codebook$domain=="Outdoor exposures"]
-summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
-```
-
-### Data Summary Exposures: Indoor air
-
-```{r Indoor air summary, attr.output='style="max-height: 100px;"',}
-selectExposures <- codebook$variable_name[codebook$domain=="Indoor air"]
-summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
-```
-
-### Data Summary Exposures: Lifestyles
-
-```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
-selectExposures <- codebook$variable_name[codebook$domain=="Lifestyles"]
-summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
-```
-
-### Data Summary Exposures: Chemicals
-
-```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
-selectExposures <- codebook$variable_name[codebook$domain=="Chemicals"]
-summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
-```
-
-## Proteomic Data
-
-First 10 rows and columns of the proteomic data
-
-```{r proteomic data, echo=TRUE}
-load(paste0(work.dir, "/proteome.RData"))
-kable(proteome.d[1:10,1:10], align="c", digits=2, format="pipe")
-
-
-```
-
-## Metabolomic Urine Data
-
-First 10 rows and columns of the metabolomic urine data
-
-```{r metabolomic urine data, echo=TRUE}
-load(paste0(work.dir, "/metabol_urine.RData"))
-kable(metabol_urine.d[1:10,1:10], align="c", digits=2, format="pipe")
-
-
+outcome_BMI <- phenotype %>% 
+  select(hs_zbmi_who)
+summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ## Metabolomic Serum Data
@@ -451,13 +272,4 @@ First 10 rows and columns of the metabolomic serum data
 ```{r metabolomic serum data, echo=TRUE}
 load(paste0(work.dir, "/metabol_serum.RData"))
 kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
-```
-
-## Genomic Data
-
-First 10 rows and columns of the genomic data
-
-```{r genomic data, echo=TRUE}
-load(paste0(work.dir, "/genome.RData"))
-kable(G[1:10,1:10], align="c", digits=2, format="pipe")
 ```

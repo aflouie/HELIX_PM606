@@ -40,24 +40,28 @@ options(warn=-1)
 
 ```
 
-## PM606 Health Data Science Practicum: Final Report and Poster Project Instructions 
-The Master of Science in Public Health Data Science at USC has a summer practicum where students are tasked with preparing a report and presentation based on their analysis of external data and a set of interesting research questions. The HELIX study will provide the data for the practicum. These data will provide students with a unique learning experience where they must access a data source and deal with a study consisting of ~1000 participants and many variables. Students must apply analytic tools that they have learned through the core courses of the Data Science program including data wrangling, data visualization, regression analysis, and machine learning.
+## PM606 Health Data Science Practicum: Final Report and Poster Project Instructions
+
+The Master of Science in Public Health Data Science at USC has a summer practicum where students are tasked with preparing a report and presentation based on their analysis of external data and a set of interesting research questions. The HELIX study will provide the data for the practicum. These data will provide students with a unique learning experience where they must access a data source and deal with a study consisting of \~1000 participants and many variables. Students must apply analytic tools that they have learned through the core courses of the Data Science program including data wrangling, data visualization, regression analysis, and machine learning.
 
 ## HELIX Project Description:
+
 ```{r image-helix, echo=FALSE, message=FALSE, fig.align='center', fig.cap='', out.width='100%', out.width='100%'}
 knitr::include_graphics(paste0(work.dir, "/HELIX.png"))
 ```
+
 Due to our ever-changing environment and habits, exposure to environmental contaminants is growing increasingly complex. The totality of environmental (non-genetic) exposures from conception until old age is defined as the ‘exposome’. The HELIX ‘early-life exposome’ approach involves combining all environmental hazards that mothers and children are exposed to, and linking this to the health, growth, and development of children.
 
 Pregnancy and the early years of life are well recognized to be periods of high susceptibility to environmental damage with lifetime consequences. Characterization of the exposome in early life can provide very effective tools for disease prevention, given that interventions at that time can reshape biological programming and shift the body’s developmental track to the normal function. This makes early life an important starting point for development of the exposome. The results of the project will help us to better understand how various types of exposures combine to influence our risk of disease.
 
-To achieve this, HELIX uses six existing, prospective birth cohort studies in Europe (BiB, EDEN, INMA, KANC, MoBa, Rhea). These cohorts have already collected large amounts of data as part of national and EU-funded projects. To supplement the already collected data, The HELIX project will develop a comprehensive set of high-tech tools, methods, and prospective data to measure and integrate the chemical, physical and molecular environment and link this to health of children. Smart phones are used to measure air pollution, UV radiation, physical activity, and noise exposure. The latest laboratory techniques are used to measure biological indicators of many chemical exposures including contaminants in food, consumer products and water. In all, HELIX has collected full exposome data from mothers and their children, the largest study to do this. HELIX used a multilevel study design with the entire study population totaling 31,472 mother–child pairs, recruited during pregnancy, in the six existing cohorts (first level); a subcohort of 1301 mother-child pairs where biomarkers, omics signatures and child health outcomes were measured at age 6-11 years (second level); and repeat-sampling panel studies with around 150 children and 150 pregnant women aimed at collecting personal exposure data (third level). For more details on the study design see Vrijheid, Slama, et al. EHP 2014. see https://www.projecthelix.eu/index.php/es/data-inventory for more information regarding the study.
+To achieve this, HELIX uses six existing, prospective birth cohort studies in Europe (BiB, EDEN, INMA, KANC, MoBa, Rhea). These cohorts have already collected large amounts of data as part of national and EU-funded projects. To supplement the already collected data, The HELIX project will develop a comprehensive set of high-tech tools, methods, and prospective data to measure and integrate the chemical, physical and molecular environment and link this to health of children. Smart phones are used to measure air pollution, UV radiation, physical activity, and noise exposure. The latest laboratory techniques are used to measure biological indicators of many chemical exposures including contaminants in food, consumer products and water. In all, HELIX has collected full exposome data from mothers and their children, the largest study to do this. HELIX used a multilevel study design with the entire study population totaling 31,472 mother–child pairs, recruited during pregnancy, in the six existing cohorts (first level); a subcohort of 1301 mother-child pairs where biomarkers, omics signatures and child health outcomes were measured at age 6-11 years (second level); and repeat-sampling panel studies with around 150 children and 150 pregnant women aimed at collecting personal exposure data (third level). For more details on the study design see Vrijheid, Slama, et al. EHP 2014. see <https://www.projecthelix.eu/index.php/es/data-inventory> for more information regarding the study.
 
 For PM606 we will use subcohort of 1301 mother-child pairs to potentially examine multiple questions of interest related to environmental exposures, omic data and their impact on health.
 
 ```{r image-helix-data, echo=FALSE, message=FALSE, fig.align='center', fig.cap='', out.width='100%', out.width='100%'}
 knitr::include_graphics(paste0(work.dir, "/HELIX_Data.png"))
 ```
+
 <br>
 
 ### Expected Outcomes:
@@ -68,73 +72,91 @@ Specifically, in the HELIX project you will examine the impact of environmental 
 
 Environmental exposures are classified into four different categories (you should choose multiple exposures to examine):
 
-1) Outdoor exposures 
-2) Indoor air 
-3) Lifestyle 
-4) Chemicals
+1)  Outdoor exposures
+2)  Indoor air
+3)  Lifestyle
+4)  Chemicals
 
 Outcomes/Phenotypes include (you should select one outcome to examine):
 
-1) Birthweight 
-2) Asthma 
-3) Body mass index z-score 
-4) Intelligence quotient 
-5) Behavior 
-6) Body mass index (cat) 
+1)  Birthweight
+2)  Asthma
+3)  Body mass index z-score
+4)  Intelligence quotient
+5)  Behavior
+6)  Body mass index (cat)
 
 There are multiple covariates or potential confounders and specific variables should be chosen given the specific hypothesis for the select exposure and outcome.
 
-In addition there are several omic data sets available for analysis including:  
-1) Proteomics: https://www.projecthelix.eu/images/HELIX_Proteome_DataSummary.pdf  
-2) Urine metabolomics: https://www.projecthelix.eu/files/HELIX_urine_metabol_DataSummary.pdf  
-3) Serum metabolomics: https://www.projecthelix.eu/images/HELIX_serum_metabol_DataSummary.pdf  
+In addition there are several omic data sets available for analysis including:\
+1) Proteomics: <https://www.projecthelix.eu/images/HELIX_Proteome_DataSummary.pdf>\
+2) Urine metabolomics: <https://www.projecthelix.eu/files/HELIX_urine_metabol_DataSummary.pdf>\
+3) Serum metabolomics: <https://www.projecthelix.eu/images/HELIX_serum_metabol_DataSummary.pdf>\
 4) Germline genetics: This is simulated data that is not real data but can be used to examine the impact of genetic data on the outcome.
 
 ### Analysis Objectives:
+
 You should analyze the data with the following major steps in mind:
 
 1)  To provide descriptive statistics of the data through summary statistics
-2)	To provide descriptive statistics of the data through visualization techniques 
-3)	To fit exploratory linear (for continuous) and logistic (for binary) regression models to assess effects of risk factors on outcomes (i.e., FEV, asthma) on the entire data set and by important subgroups 
-4)	To develop the best fitting model, either through regression or machine learning techniques, that predicts the outcome of interest
+2)  To provide descriptive statistics of the data through visualization techniques
+3)  To fit exploratory linear (for continuous) and logistic (for binary) regression models to assess effects of risk factors on outcomes (i.e., FEV, asthma) on the entire data set and by important subgroups
+4)  To develop the best fitting model, either through regression or machine learning techniques, that predicts the outcome of interest
 5)  Perform sensitivity analysis for validation using training and test sets to determine model performance
-5)  To summarize findings from the models using both tabular and graphical displays 
-6)	To provide interpretation for the main findings of the final models 
-7)	Prepare a report summarizing your goals, methods, and main findings 
-8)	Make a poster presentation during the last day of class 
-9)  Methods will draw from Data Science courses on logistic regression and machine learning (including random forests, gradient boosting, clustering). The analyses will be conducted in R, and the analysis scripts and report should be published on their personal GitHub website.
+6)  To summarize findings from the models using both tabular and graphical displays
+7)  To provide interpretation for the main findings of the final models
+8)  Prepare a report summarizing your goals, methods, and main findings
+9)  Make a poster presentation during the last day of class
+10) Methods will draw from Data Science courses on logistic regression and machine learning (including random forests, gradient boosting, clustering). The analyses will be conducted in R, and the analysis scripts and report should be published on their personal GitHub website.
 
 ### Components of an Effective Report for Scientific Communication:
-1)	Title: A descriptive title that is informative and concise.
-2)	Abstract: A brief summary of the main findings and conclusions.
-3)	Introduction: A brief overview of the research question, the data, and the methods used.
-4)	Methods: A detailed description of the data, the methods used, and the analysis plan.  
-\item[] 4.1)  Data: A description of the data, including the sample size, the variables collected, and any missing data.  
-\item[] 4.2)  Methods: A description of the methods used to analyze the data, including any statistical models or machine learning techniques used. This section should include information on the Outcome, Covariates, Exposures/risk factors, Confounders, Sensitivity analysis, Model building and Model validation.  
 
-5)	Results: A summary of the main findings, including tables and figures.
-6)	Discussion: An interpretation of the main findings, including a discussion of the limitations and implications of the results.
+1)  Title: A descriptive title that is informative and concise.
+
+2)  Abstract: A brief summary of the main findings and conclusions.
+
+3)  Introduction: A brief overview of the research question, the data, and the methods used.
+
+4)  Methods: A detailed description of the data, the methods used, and the analysis plan.\
+
+    \item[]
+
+    4.1) Data: A description of the data, including the sample size, the variables collected, and any missing data.\
+
+    \item[]
+
+    4.2) Methods: A description of the methods used to analyze the data, including any statistical models or machine learning techniques used. This section should include information on the Outcome, Covariates, Exposures/risk factors, Confounders, Sensitivity analysis, Model building and Model validation.
+
+5)  Results: A summary of the main findings, including tables and figures.
+
+6)  Discussion: An interpretation of the main findings, including a discussion of the limitations and implications of the results.
+
 7)  Conclusions: A summary of the main findings and their implications for future research.
-8)	References: A list of all references cited in the report.
-9)	Appendices: Any additional information that is relevant to the report, such as code or data.
 
+8)  References: A list of all references cited in the report.
+
+9)  Appendices: Any additional information that is relevant to the report, such as code or data.
 
 ### Poster Preparation Instructions:
+
 Each person will produce one poster. Your poster should include:
 
-1.	A descriptive title and a listing of contributors along with affiliations.
-2.	A section for each of the following:
-+   Key messages, 
-+   Objective
-+   Background
-+   Methods
-+   Study and data description
-+   Main results findings
-+   Conclusions
-3.	Acknowledgements of funding sources, and individuals/groups that have helped with the conduct of the project and/or preparation of the poster.
-4.	A disclaimer as follows: “Note that the results on this poster are based on a dataset that includes only a non-representative sample from the actual study cohort. Hence, it is solely intended for instructional purposes and should not be used to draw definitive (and substantively meaningful) conclusions about actual study objectives.”
+1.  A descriptive title and a listing of contributors along with affiliations.
+2.  A section for each of the following:
 
-## Data Description and Codebook 
+-   Key messages,
+-   Objective
+-   Background
+-   Methods
+-   Study and data description
+-   Main results findings
+-   Conclusions
+
+3.  Acknowledgements of funding sources, and individuals/groups that have helped with the conduct of the project and/or preparation of the poster.
+4.  A disclaimer as follows: “Note that the results on this poster are based on a dataset that includes only a non-representative sample from the actual study cohort. Hence, it is solely intended for instructional purposes and should not be used to draw definitive (and substantively meaningful) conclusions about actual study objectives.”
+
+## Data Description and Codebook
+
 ```{r load data and coddebook, echo=TRUE}
 load(paste0(work.dir, "/HELIX.RData"))
 kable(codebook, align="c")
@@ -145,42 +167,49 @@ kable(codebook, align="c")
 ## Data Summary for Covariates, Phenotypes, and Exposures {.tabset}
 
 ### Data Summary Covariates
+
 ```{r covariate summary, results='asis'}
 summarytools::view(dfSummary(covariates, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ### Data Summary Phenotypes
+
 ```{r phenotype summary}
 summarytools::view(dfSummary(phenotype, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ### Data Summary Exposures: Outdoor exposures
+
 ```{r Outdoor exposures summary, attr.output='style="max-height: 100px;"',}
 selectExposures <- codebook$variable_name[codebook$domain=="Outdoor exposures"]
 summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ### Data Summary Exposures: Indoor air
+
 ```{r Indoor air summary, attr.output='style="max-height: 100px;"',}
 selectExposures <- codebook$variable_name[codebook$domain=="Indoor air"]
 summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ### Data Summary Exposures: Lifestyles
+
 ```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
 selectExposures <- codebook$variable_name[codebook$domain=="Lifestyles"]
 summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ### Data Summary Exposures: Chemicals
+
 ```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
 selectExposures <- codebook$variable_name[codebook$domain=="Chemicals"]
 summarytools::view(dfSummary(exposome[,names(exposome) %in% selectExposures], style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
+## Proteomic Data
 
-## Proteomic Data 
 First 10 rows and columns of the proteomic data
+
 ```{r proteomic data, echo=TRUE}
 load(paste0(work.dir, "/proteome.RData"))
 kable(proteome.d[1:10,1:10], align="c", digits=2, format="pipe")
@@ -189,7 +218,9 @@ kable(proteome.d[1:10,1:10], align="c", digits=2, format="pipe")
 ```
 
 ## Metabolomic Urine Data
+
 First 10 rows and columns of the metabolomic urine data
+
 ```{r metabolomic urine data, echo=TRUE}
 load(paste0(work.dir, "/metabol_urine.RData"))
 kable(metabol_urine.d[1:10,1:10], align="c", digits=2, format="pipe")
@@ -197,8 +228,10 @@ kable(metabol_urine.d[1:10,1:10], align="c", digits=2, format="pipe")
 
 ```
 
-## Metabolomic Serum Data 
+## Metabolomic Serum Data
+
 First 10 rows and columns of the metabolomic serum data
+
 ```{r metabolomic serum data, echo=TRUE}
 load(paste0(work.dir, "/metabol_serum.RData"))
 kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
@@ -206,13 +239,13 @@ kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
 
 ```
 
-## Genomic Data 
+## Genomic Data
+
 First 10 rows and columns of the genomic data
+
 ```{r genomic data, echo=TRUE}
 load(paste0(work.dir, "/genome.RData"))
 kable(G[1:10,1:10], align="c", digits=2, format="pipe")
 
 
 ```
-
-
