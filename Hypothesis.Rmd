@@ -18,6 +18,11 @@ library(tidyverse)
 library(Biobase)
 library(plotly)
 library(corrplot)
+library(table1)
+library(randomForest)
+library(gbm)
+library(glmnet)
+library(Hmisc)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
 work.dir <- here::here()
@@ -46,7 +51,7 @@ These studies collectively illustrate the critical role of environmental EDCs in
 This study will utilize data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy  and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
 
 ```{r load data and codebook, echo=TRUE}
-load(paste0(work.dir, "/HELIX.RData"))
+load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
 filtered_codebook <- codebook %>%
   filter(domain %in% c("Chemicals", "Lifestyles") & period == "Postnatal" & subfamily != "Allergens")
 kable(filtered_codebook, align = "c", format = "html") %>%
@@ -86,7 +91,17 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
   print(p)
   return(p)
 })
+```
 
+The Sum of KIDMED indices, without index9 histogram displays a multimodal distribution with peaks primarily at scores 0, 3, 5, 7, and 10. This suggests that the dataset has several subgroups within the population, each characterized by distinct dietary habits or patterns as measured by the KIDMED index, which assesses adherence to the Mediterranean diet. The distribution is discrete, reflecting integer scores that children have received based on their dietary intake. The modes indicate the most common dietary patterns, suggesting possible clusters of dietary behavior among the children sampled.
+
+The second histogram depicts the distribution of clean and over-reported moderate-to-vigorous physical activity (MVPA) in minutes per day. This histogram shows a right-skewed distribution, indicating that most children report lower levels of physical activity, with a smaller number of children reporting very high levels of activity, which might be over-reported. The peak near the lower end suggests that a significant portion of the sample engages in minimal to moderate amounts of MVPA, while the long tail to the right hints at a few cases with unusually high reported values, possibly due to over-reporting or measurement errors in data collection.
+
+For sedentary behavior in minutes per day, there is a distribution that is slightly left-skewed in the histogram. Most children tend to have higher sedentary time, with a concentration of values towards the right side of the histogram. The distribution suggests that fewer children engage in lower levels of sedentary behavior, indicating a trend towards more inactivity among the sample. This pattern might raise concerns regarding lifestyle habits that contribute to prolonged periods of low physical activity.
+
+The distribution of total hours of sleep per night (averaged over weekdays and weekends) exhibits a nearly normal distribution. This suggests that most children in the study have a consistent sleep duration with the bulk of the data clustering around the mean. The symmetry of the distribution indicates a healthy variance in sleep hours among the children, without significant extremes in either insufficient or excessive sleep, which is a positive indication of regular sleep patterns in this population.
+
+```{r}
 categorical_lifestyle <- lifestyle_exposome %>% 
   select(where(is.factor))
 
@@ -109,6 +124,47 @@ categorical_plots <- lapply(unique_categorical_vars, function(var) {
   return(p)
 })
 ```
+
+Breastfeeding Duration: Majority of observations are in the highest duration category, suggesting longer breastfeeding periods are common.
+
+Bakery Products: Shows a relatively even distribution across the three categories, indicating varied consumption levels of bakery products among participants.
+
+Beverages: A significant number of participants consume beverages at the highest level, indicating a preference or higher consumption of beverages like sodas.
+
+Breakfast Cereal: The highest category of cereal consumption is the most common, suggesting a preference for or greater consumption of cereals.
+
+Caffeinated/Energy Drinks: Displays a high number of participants avoiding or consuming very low quantities of caffeinated or energy drinks.
+
+Dairy: Shows a fairly even distribution across all categories, indicating a uniform consumption pattern of dairy products.
+
+Fast Food: Most participants fall into the middle category, indicating moderate consumption of fast food.
+
+Organic Food: Most participants either consume a lot of or no organic food, with fewer in the middle range.
+
+Processed Meat: Consumption levels are fairly evenly distributed, indicating varied dietary habits regarding processed meats.
+
+Ready-Made Meals: Many participants rarely consume ready-made meals, with a significant number also in the highest consumption category.
+
+Bread: Distribution shows a significant leaning towards higher bread consumption.
+
+Cereal: Even distribution across categories suggests varied cereal consumption habits.
+
+Fish and Seafood: Even distribution across categories, indicating varied consumption of fish and seafood.
+
+Fruits: High fruit consumption is the most common, with fewer participants in the lowest category.
+
+Added Fats: More participants consume added fats at the lowest and highest levels, with fewer in the middle.
+
+Meat: Consumption of meat is highest in the middle category.
+
+Potatoes: Shows a tendency towards either low or high consumption, with fewer people in the middle range.
+
+Sweets: High consumption of sweets is the most common, indicating a preference for or higher access to sugary foods.
+
+Vegetables: Most participants consume a high amount of vegetables.
+
+Yogurt: Shows a preference for either very high or very low yogurt consumption, with fewer participants in the middle.
+
 
 ```{r}
 numeric_lifestyle <- select_if(lifestyle_exposome, is.numeric)
@@ -148,12 +204,70 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
   print(p)
   return(p)
 })
+```
 
+Arsenic (hs_as_c_Log2): This histogram shows a bimodal distribution of arsenic levels, with two prominent peaks. Such a distribution might suggest two different populations or sources of exposure among the study participants.
+
+Cadmium (hs_cd_c_Log2): The distribution of cadmium levels is skewed to the right, indicating that most participants have lower exposure levels, with a few cases showing significantly higher exposures.
+
+Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew. This suggests a common source of exposure with varying levels among the population.
+
+Cesium (hs_cs_c_Log2): Exhibits a right-skewed distribution, indicating that most participants have relatively low exposure levels, but a small number have substantially higher exposures.
+
+Copper (hs_cu_c_Log2): Shows a right-skewed distribution, suggesting that while most individuals have moderate exposure, a few experience significantly higher levels of copper.
+
+Mercury (hs_hg_c_Log2): This distribution is also right-skewed, common for environmental pollutants, where a majority have lower exposure levels, and a minority have high exposure levels.
+
+Manganese (hs_mn_c_Log2): The histogram for manganese displays a bell-shaped distribution, indicating a normal distribution of manganese levels among the participants.
+
+Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures.
+
+Lead (hs_pb_c_Log2): The distribution is slightly right-skewed, indicating higher exposure levels in a smaller group of the population compared to the majority.
+
+DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population.
+
+DDT (hs_ddt_cadj_Log2): This histogram displays a multi-modal distribution, suggesting different sources or durations of exposure among the population.
+
+Hexachlorobenzene (hs_hcb_cadj_Log2): Exhibits a right-skewed distribution with a long tail, indicating that most people have lower exposure levels with some outliers experiencing very high exposures.
+
+PCB 118, 138, 153 (hs_pcb118_cadj_Log2, hs_pcb138_cadj_Log2, hs_pcb153_cadj_Log2): All three PCBs show similar distributions with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population.
+
+PCB 170 and PCB 180: Both histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
+
+Sum of PCBs: The histogram is approximately normally distributed, centered around a higher value compared to individual PCBs, indicating a collective higher average exposure when all measured PCBs are considered together.
+
+DEP, DETP, DMTP, DMDTP, PBDE 153, and PBDE 47: These histograms mostly show multimodal distributions (more than one peak), suggesting different exposure sources or groups within the population that have distinct exposure levels. The multiple peaks could indicate varied exposure pathways or differences in how these chemicals are metabolized or retained in the body.
+
+PFHxS, PFNA, and PFOA: These perfluorinated compounds display a roughly normal distribution skewed right, suggesting a common source of exposure among the population, but with some individuals experiencing higher exposures.
+
+PFOS and PFUnDA: The histograms show a single, sharp peak with a rapid decline, indicating that most individuals have similar exposure levels, likely due to common environmental sources or regulatory controls limiting variability.
+
+BPA: The histogram is sharply peaked near zero with a long tail to the right, indicating low exposure for most individuals but significant exposure for a few, possibly due to specific product use or occupational exposure.
+
+MBZP (Monobenzyl Phthalate): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures.
+
+MECPP (Mono-ethyl hexyl phthalate): The distribution is right-skewed, similar to MBZP, but with a smoother decline. This pattern also indicates that while most subjects have lower exposure levels, a few experience significantly higher exposures.
+
+MEHHP (Mono-2-ethyl-5-hydroxyhexyl phthalate): Exhibits a unimodal distribution with a peak around a middle value and symmetric tails. This could indicate a more standardized exposure level among the subjects with some variation.
+
+MEHP (Mono-ethylhexyl phthalate):Another right-skewed distribution, indicating that most subjects have lower exposure levels but a few have much higher levels.
+
+MEOHP (Mono-2-ethyl-5-oxohexyl phthalate): This histogram shows a distribution with a peak around the middle values and a tail extending towards higher values, suggesting a central tendency with some higher exposures.
+
+MEP (Mono-ethyl phthalate): The distribution is right-skewed, similar to others, showing most subjects with low to moderate levels of exposure, but a few have much higher levels.
+
+OXINP (Oxidized Isoparaffin): This histogram shows a central peak with a fast decline, indicating a concentration of values around a specific point which might suggest a common exposure level among the subjects.
+
+Sum of DEHP Metabolites: This shows a broad distribution with a peak towards the lower end, indicating varied exposure levels among the subjects, with most experiencing lower exposures.
+
+Personal Care Product Use: The histogram displays a highly skewed distribution with multiple peaks, reflecting varied usage patterns among subjects, with some showing particularly high usage levels.
+
+```{r}
 categorical_chemical <- chemical_exposome %>% 
   select(where(is.factor))
 
 categorical_chemical_long <- pivot_longer(
-  categorical_lifestyle,
+  categorical_chemical,
   cols = everything(),
   names_to = "variable",
   values_to = "value"
@@ -172,6 +286,21 @@ categorical_plots <- lapply(unique_categorical_vars, function(var) {
 })
 ```
 
+hs_t_cdich_None (Detected vs. Undetected):The vast majority of samples were undetected for this particular chemical, with only a small fraction showing detection.
+
+hs_dmdtp_cdich_None (Detected vs. Undetected): Similar to the previous, most samples were undetected, but a higher proportion shows detection compared to the first chemical.
+
+FAS_cat_None (Family Affluence Scale categories - Low, Middle, High): This shows the distribution of family affluence categories where the largest group is the high affluence, followed by middle, with the fewest in the low category.
+
+hs_contactfam_3cat_num_None (Frequency of contact with family): Most individuals reported daily (almost daily) contact with family, a smaller number reported weekly contact, and the fewest reported less frequent than weekly contact.
+
+hs_participation_3cat_None (Participation in organisations): A large number of individuals do not participate in any organisation, a substantial number participate in one, and a smaller group in two or more.
+
+hs_cotinine_cdich_None (Detected vs. Undetected): Cotinine detection is high, indicating exposure to nicotine, with a significant number of samples showing detection versus undetected.
+
+hs_globalexp2_None (Global Exposure - Exposure vs. No Exposure): This represents overall exposure to some condition or factor, with a larger proportion having no exposure compared to those with exposure.
+
+hs_smk_parents_None (Smoking status of parents - Both, Neither, One): The largest group reported that neither parent smokes, a significant number reported one smoking parent, and the smallest group reported both parents smoke.
 
 ```{r}
 numeric_chemical <- select_if(chemical_exposome, is.numeric)
@@ -225,7 +354,25 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
   print(p)
   return(p)
 })
+```
 
+ID: This histogram appears to show a uniform distribution of IDs over a range, with all IDs evenly spaced. This typical pattern is expected in a dataset where IDs are systematically assigned.
+
+Maternal BMI (h_mbmi): The distribution of maternal BMI is roughly normal but slightly right-skewed, indicating that more individuals are on the higher side of the BMI scale. The peak of the histogram around the 25-30 range suggests a concentration of values in this area, which is typical for adult populations.
+
+Weight Gain (hs_wgtgain): This histogram displays a bimodal distribution of weight gain, with significant peaks around 10 and another around 20. This could indicate two common patterns or recommendations in weight gain during pregnancy or another health-related period.
+
+Gestational Age at Childbirth (e3_gac): The distribution is centered around the 40-week mark, which is typical for full-term pregnancies. There is a sharp peak at around 40 weeks, showing that most childbirths occur at this gestational age.
+
+Maternal Age (h_age): This histogram shows a roughly normal distribution with a peak around the early 30s, suggesting that this is the most common age range for the mothers in the dataset.
+
+Child's Age (hs_child_age): This histogram is multimodal, reflecting several peaks across different ages. This could be indicative of the data collection points or particular age groups being studied.
+
+Child's Height (hs_c_height): The data is approximately normally distributed with a slight right skew. The majority of the measurements cluster around the mean, which suggests typical growth patterns.
+
+Child's Weight (hs_c_weight): This histogram is right-skewed, indicating that while most children's weights are within a normal range, there is a long tail of children who weigh more, which might suggest variations in growth or cases of overweight.
+
+```{r}
 categorical_covariates <- covariates %>% 
   select(where(is.factor))
 
@@ -249,6 +396,18 @@ categorical_plots <- lapply(unique_categorical_vars, function(var) {
 })
 ```
 
+Cohorts (h_cohort): The distribution shows the count of subjects across six different cohorts. All cohorts have a substantial number of subjects, with cohort 5 showing the highest participation.
+
+Gender Distribution (e3_sex): The gender distribution is nearly balanced with a slight higher count for males compared to females.
+
+Year of Birth (e3_yearbir): This chart shows that the majority of subjects were born in the later years, with a significant increase in 2009, indicating perhaps a larger recruitment or a specific cohort focus that year.
+
+Educational Level (h_educmc): Represents three categories of educational attainment, with category 3 having the highest count, suggesting a higher level of education among the majority of the subjects.
+
+Native Language (h_native): Shows the count of subjects by their native language status. The majority are from category 2, which could represent a specific linguistic or demographic group.
+
+Parity (h_parity): The chart categorizes subjects based on the number of children they have. The largest group is those with no children, followed by those with one child, and a smaller group with two children.
+
 
 ```{r}
 numeric_covariate <- select_if(covariates, is.numeric)
@@ -265,11 +424,271 @@ outcome_BMI <- phenotype %>%
 summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-## Metabolomic Serum Data
+# Models to Consider
+
+```{r}
+outcome_cov <- cbind(covariates, outcome_BMI)
+outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
+outcome_cov <- outcome_cov %>%
+  select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, h_parity_None, hs_zbmi_who)
+summary_table <- dfSummary(outcome_cov, 
+                           varnumbers = TRUE, 
+                           valid.col = FALSE, 
+                           graph.col = TRUE, 
+                           style = "multiline")
+
+print(summary_table, method = "render", plain.ascii = FALSE, style = "grid")
+```
+
+```{r}
+#chemicals considered? would it be too small?
+chemicals <- c(
+  "hs_bpa_cadj_Log2",            # Bisphenol A, known for endocrine disruption
+  "hs_pcb118_cadj_Log2",         # PCB 118, a type of polychlorinated biphenyl
+  "hs_pcb138_cadj_Log2",         # PCB 138
+  "hs_pcb153_cadj_Log2",         # PCB 153
+  "hs_pcb170_cadj_Log2",         # PCB 170
+  "hs_pcb180_cadj_Log2",         # PCB 180
+  "hs_pb_c_Log2",                # Lead, associated with numerous health issues
+  "hs_cd_c_Log2",                # Cadmium, linked to kidney damage and obesity
+  "hs_ddt_cadj_Log2",            # DDT, an organochlorine pesticide
+  "hs_dde_cadj_Log2"             # DDE, a breakdown product of DDT
+)
+
+#the full chemicals list
+chemicals_full <- c(
+  "hs_as_c_Log2",
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mn_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_tl_cdich_None",
+  "hs_dde_cadj_Log2",
+  "hs_ddt_cadj_Log2",
+  "hs_hcb_cadj_Log2",
+  "hs_pcb118_cadj_Log2",
+  "hs_pcb138_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_pcb180_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_detp_cadj_Log2",
+  "hs_dmdtp_cdich_None",
+  "hs_dmp_cadj_Log2",
+  "hs_dmtp_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pbde47_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfna_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_pfunda_c_Log2",
+  "hs_bpa_cadj_Log2",
+  "hs_bupa_cadj_Log2",
+  "hs_etpa_cadj_Log2",
+  "hs_mepa_cadj_Log2",
+  "hs_oxbe_cadj_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_trcs_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mecpp_cadj_Log2",
+  "hs_mehhp_cadj_Log2",
+  "hs_mehp_cadj_Log2",
+  "hs_meohp_cadj_Log2",
+  "hs_mep_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2",
+  "hs_ohminp_cadj_Log2",
+  "hs_oxominp_cadj_Log2",
+  "FAS_cat_None",
+  "hs_contactfam_3cat_num_None",
+  "hs_hm_pers_None",
+  "hs_participation_3cat_None",
+  "hs_cotinine_cdich_None",
+  "hs_globalexp2_None",
+  "hs_smk_parents_None"
+)
+
+#postnatal diet for child
+postnatal_diet <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_beverages_Ter",
+  "hs_break_cer_Ter",
+  "hs_caff_drink_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "h_legume_preg_Ter",
+  "hs_org_food_Ter",
+  "hs_proc_meat_Ter",
+  "hs_readymade_Ter",
+  "hs_total_bread_Ter",
+  "hs_total_cereal_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_meat_Ter",
+  "hs_total_potatoes_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter",
+  "hs_total_yog_Ter"
+)
+
+all_columns <- c(chemicals_full, postnatal_diet)
+extracted_exposome <- exposome %>% select(all_of(all_columns))
+head(extracted_exposome)
+```
+
+```{r}
+selected_data <- cbind(outcome_cov, extracted_exposome)
+head(selected_data)
+```
+
+```{r}
+selected_data <- select_if(selected_data, is.numeric)
+cor_matrix <- cor(selected_data, method = "pearson")
+cor_matrix <- cor(selected_data, method = "spearman")
+custom_color_scale <- list(
+  c(0, "darkred"),    
+  c(0.5, "white"), 
+  c(1, "darkblue")
+)
+
+plot_ly(
+  z = cor_matrix, 
+  x = colnames(cor_matrix), 
+  y = colnames(cor_matrix), 
+  type = "heatmap",
+  colorscale = custom_color_scale
+) %>%
+layout(
+  title = "Correlation Matrix",
+  xaxis = list(tickangle = -90),
+  yaxis = list(side = "left")
+)
+```
+
+### LASSO
+
+```{r}
+set.seed(101)
+sample_size <- floor(0.7 * nrow(selected_data)) #70-30 split
+
+train_indices <- sample(seq_len(nrow(selected_data)), size = sample_size)
+
+train_set <- selected_data[train_indices, ]
+validation_set <- selected_data[-train_indices, ]
+
+y_train <- train_set$hs_zbmi_who
+X_train <- as.matrix(train_set[, setdiff(names(train_set), "hs_zbmi_who")])  # predictor matrix for training
+
+# fit the LASSO model
+lasso_model <- glmnet(X_train, y_train, alpha = 1)  # alpha = 1 for LASSO
+
+set.seed(101)
+cv_lasso <- cv.glmnet(X_train, y_train, alpha = 1, type.measure = "mse", nfolds = 10)
+
+plot(cv_lasso)
+best_lambda <- cv_lasso$lambda.min  # lambda that minimizes the MSE
+coef(cv_lasso, s = best_lambda)  # coefficients at the chosen lambda
+
+y_validation <- validation_set$hs_zbmi_who  # response variable for validation
+X_validation <- as.matrix(validation_set[, setdiff(names(validation_set), "hs_zbmi_who")])  # predictor matrix for validation
+
+predictions <- predict(lasso_model, s = best_lambda, newx = X_validation)
+mse_lasso <- mean((predictions - y_validation)^2)  # calculate Mean Squared Error on validation data
+print(paste("MSE on validation set: ", mse_lasso))
+coef(lasso_model, s = best_lambda)
+```
+
+### Ridge
+
+```{r}
+# fit the ridge model
+ridge_model <- glmnet(X_train, y_train, alpha = 0)  # alpha = 0 for ridge
+
+set.seed(101)
+cv_ridge <- cv.glmnet(X_train, y_train, alpha = 0, type.measure = "mse", nfolds = 10)
+
+plot(cv_ridge)
+best_lambda <- cv_ridge$lambda.min  # lambda that minimizes the MSE
+coef(cv_ridge, s = best_lambda)  # coefficients at the chosen lambda
+
+predictions <- predict(ridge_model, s = best_lambda, newx = X_validation)
+mse_ridge <- mean((predictions - y_validation)^2)  # calculate Mean Squared Error on validation data
+print(paste("MSE on validation set: ", mse_ridge))
+coef(ridge_model, s = best_lambda)
+```
+
+### Elastic Net
+
+```{r}
+# elastic net model
+enet_model <- glmnet(X_train, y_train, alpha = 0.5)  # alpha=0.5 for balanced enet
+
+set.seed(101)
+cv_enet <- cv.glmnet(X_train, y_train, alpha = 0.5, type.measure = "mse", nfolds = 10)
+plot(cv_enet)
+best_lambda_enet <- cv_enet$lambda.min
+best_lambda_enet
+
+# predict on the validation set using the best lambda from CV
+predictions_enet <- predict(enet_model, s = best_lambda_enet, newx = X_validation)
+mse_enet <- mean((predictions_enet - y_validation)^2)
+print(paste("MSE on validation set: ", mse_enet))
+coef(enet_model, s = best_lambda_enet)
+```
+
+### Random Forest
+
+```{r}
+set.seed(101)
+rf_model <- randomForest(hs_zbmi_who ~ ., data = train_set, ntree = 500, mtry = sqrt(ncol(train_set)))
+
+# evaluating the model
+rf_predictions <- predict(rf_model, newdata = validation_set)
+rf_mse <- mean((rf_predictions - validation_set$hs_zbmi_who)^2)
+print(rf_mse)
+
+# feature importance
+importance(rf_model)
+varImpPlot(rf_model)
+```
+
+### Gradient Boosting Machine
+
+```{r}
+set.seed(101)
+train_indices <- sample(1:nrow(selected_data), size = 0.7*nrow(selected_data))
+train_set <- selected_data[train_indices, ]
+test_set <- selected_data[-train_indices, ]
+
+gbm_model <- gbm(hs_zbmi_who ~ .,
+                 data = train_set, 
+                 distribution = "gaussian",
+                 n.trees = 500,
+                 interaction.depth = 4,
+                 shrinkage = 0.01,  # learning rate
+                 cv.folds = 10,  # 10-fold cross-validation
+                 n.minobsinnode = 10
+)
+
+summary(gbm_model)
+
+predictions <- predict(gbm_model, test_set, n.trees = gbm_model$n.trees)
+mse_gbm <- mean((predictions - test_set$hs_zbmi_who)^2)
+print(paste("Mean Squared Error: ", mse_gbm))
+```
+
+# Metabolomic Serum Data
 
 First 10 rows and columns of the metabolomic serum data
 
 ```{r metabolomic serum data, echo=TRUE}
-load(paste0(work.dir, "/metabol_serum.RData"))
+load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
 kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
 ```
