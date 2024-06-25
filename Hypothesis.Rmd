@@ -12,6 +12,7 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
+library(dplyr)
 library(summarytools)
 library(kableExtra)
 library(tidyverse)
@@ -20,8 +21,13 @@ library(plotly)
 library(corrplot)
 library(table1)
 library(randomForest)
+library(caret)
+library(nnet)
 library(gbm)
+library(grpreg)
 library(glmnet)
+library(cluster)
+library(factoextra)
 library(Hmisc)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
@@ -32,7 +38,7 @@ options(warn=-1)
 
 # Hypothesis
 
-Postnatal environmental exposures, particularly those found in household products and dietary intake, along with specific serum metabolomics profiles, are significantly associated with the BMI Z-score of children aged 6-11 years. Higher concentrations of certain metabolites in serum, reflecting exposure to chemical classes or metals, will correlate with variations in BMI Z-score, controlling for age and other relevant covariates. High-dimensional metabolomics data can reveal comprehensive biochemical profiles that reflect environmental exposures and metabolic states. Not only that, but some metabolites associated with chemical exposures and dietary patterns can serve as biomarkers for the risk of developing obesity.
+Postnatal environmental exposures, particularly those found in household products and dietary intake, along with specific serum metabolomics profiles, are significantly associated with the BMI Z-score of children aged 6-11 years. Higher concentrations of certain metabolites in serum, reflecting exposure to chemical classes or metals, will correlate with variations in BMI Z-score, controlling for age and other relevant covariates. Some metabolites associated with chemical exposures and dietary patterns can serve as biomarkers for the risk of developing obesity.
 
 # Background
 
@@ -52,9 +58,22 @@ This study will utilize data from the subcohort of 1301 mother-child pairs in th
 
 ```{r load data and codebook, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
-filtered_codebook <- codebook %>%
+filtered_chem_diet <- codebook %>%
   filter(domain %in% c("Chemicals", "Lifestyles") & period == "Postnatal" & subfamily != "Allergens")
-kable(filtered_codebook, align = "c", format = "html") %>%
+
+# specific covariates
+filtered_covariates <- codebook %>%
+  filter(domain == "Covariates" & 
+         variable_name %in% c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
+
+#specific phenotype variables
+filtered_phenotype <- codebook %>%
+  filter(domain == "Phenotype" & 
+         variable_name %in% c("hs_zbmi_who"))
+
+# combining all necessary variables together
+combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered_phenotype)
+kable(combined_codebook, align = "c", format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
 ```
 
@@ -63,16 +82,15 @@ kable(filtered_codebook, align = "c", format = "html") %>%
 ### Data Summary Exposures: Lifestyles
 
 ```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
-Lifestyle_Exposures <- filtered_codebook$variable_name[filtered_codebook$domain=="Lifestyles"]
-lifestyle_exposome <- exposome %>%
-  select(all_of(Lifestyle_Exposures))
+Lifestyle_Exposures <- combined_codebook$variable_name[combined_codebook$domain=="Lifestyles"]
+lifestyle_exposome <- dplyr::select(exposome, all_of(Lifestyle_Exposures))
 summarytools::view(dfSummary(lifestyle_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ```{r}
 #separate numeric and categorical data
 numeric_lifestyle <- lifestyle_exposome %>% 
-  select(where(is.numeric))
+  dplyr::select(where(is.numeric))
 
 numeric_lifestyle_long <- pivot_longer(
   numeric_lifestyle,
@@ -103,7 +121,7 @@ The distribution of total hours of sleep per night (averaged over weekdays and w
 
 ```{r}
 categorical_lifestyle <- lifestyle_exposome %>% 
-  select(where(is.factor))
+  dplyr::select(where(is.factor))
 
 categorical_lifestyle_long <- pivot_longer(
   categorical_lifestyle,
@@ -176,16 +194,16 @@ corrplot(cor_matrix, method = "circle")
 ### Data Summary Exposures: Chemicals
 
 ```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
-Chemical_Exposures <- filtered_codebook$variable_name[filtered_codebook$domain=="Chemicals"]
+Chemical_Exposures <- combined_codebook$variable_name[combined_codebook$domain=="Chemicals"]
 chemical_exposome <- exposome %>%
-  select(all_of(Chemical_Exposures))
+  dplyr::select(all_of(Chemical_Exposures))
 summarytools::view(dfSummary(chemical_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
 ```{r}
 #separate numeric and categorical data
 numeric_chemical <- chemical_exposome %>% 
-  select(where(is.numeric))
+  dplyr::select(where(is.numeric))
 
 numeric_chemical_long <- pivot_longer(
   numeric_chemical,
@@ -264,7 +282,7 @@ Personal Care Product Use: The histogram displays a highly skewed distribution w
 
 ```{r}
 categorical_chemical <- chemical_exposome %>% 
-  select(where(is.factor))
+  dplyr::select(where(is.factor))
 
 categorical_chemical_long <- pivot_longer(
   categorical_chemical,
@@ -335,7 +353,7 @@ summarytools::view(dfSummary(covariates, style = 'grid', plain.ascii = FALSE, va
 ```{r}
 #separate numeric and categorical data
 numeric_covariates <- covariates %>% 
-  select(where(is.numeric))
+  dplyr::select(where(is.numeric))
 
 numeric_covariates_long <- pivot_longer(
   numeric_covariates,
@@ -374,7 +392,7 @@ Child's Weight (hs_c_weight): This histogram is right-skewed, indicating that wh
 
 ```{r}
 categorical_covariates <- covariates %>% 
-  select(where(is.factor))
+  dplyr::select(where(is.factor))
 
 categorical_covariates_long <- pivot_longer(
   categorical_covariates,
@@ -404,7 +422,7 @@ Year of Birth (e3_yearbir): This chart shows that the majority of subjects were 
 
 Educational Level (h_educmc): Represents three categories of educational attainment, with category 3 having the highest count, suggesting a higher level of education among the majority of the subjects.
 
-Native Language (h_native): Shows the count of subjects by their native language status. The majority are from category 2, which could represent a specific linguistic or demographic group.
+Native Language (h_native): Shows the count of parents by their native country status. The majority are from category 2.
 
 Parity (h_parity): The chart categorizes subjects based on the number of children they have. The largest group is those with no children, followed by those with one child, and a smaller group with two children.
 
@@ -420,7 +438,7 @@ corrplot(cor_matrix, method = "circle")
 
 ```{r phenotype summary}
 outcome_BMI <- phenotype %>% 
-  select(hs_zbmi_who)
+  dplyr::select(hs_zbmi_who, hs_bmi_c_cat)
 summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
@@ -430,7 +448,7 @@ summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, v
 outcome_cov <- cbind(covariates, outcome_BMI)
 outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
 outcome_cov <- outcome_cov %>%
-  select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, h_parity_None, hs_zbmi_who)
+  dplyr::select(hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, hs_zbmi_who)
 summary_table <- dfSummary(outcome_cov, 
                            varnumbers = TRUE, 
                            valid.col = FALSE, 
@@ -441,20 +459,6 @@ print(summary_table, method = "render", plain.ascii = FALSE, style = "grid")
 ```
 
 ```{r}
-#chemicals considered? would it be too small?
-chemicals <- c(
-  "hs_bpa_cadj_Log2",            # Bisphenol A, known for endocrine disruption
-  "hs_pcb118_cadj_Log2",         # PCB 118, a type of polychlorinated biphenyl
-  "hs_pcb138_cadj_Log2",         # PCB 138
-  "hs_pcb153_cadj_Log2",         # PCB 153
-  "hs_pcb170_cadj_Log2",         # PCB 170
-  "hs_pcb180_cadj_Log2",         # PCB 180
-  "hs_pb_c_Log2",                # Lead, associated with numerous health issues
-  "hs_cd_c_Log2",                # Cadmium, linked to kidney damage and obesity
-  "hs_ddt_cadj_Log2",            # DDT, an organochlorine pesticide
-  "hs_dde_cadj_Log2"             # DDE, a breakdown product of DDT
-)
-
 #the full chemicals list
 chemicals_full <- c(
   "hs_as_c_Log2",
@@ -539,9 +543,11 @@ postnatal_diet <- c(
 )
 
 all_columns <- c(chemicals_full, postnatal_diet)
-extracted_exposome <- exposome %>% select(all_of(all_columns))
+extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
 head(extracted_exposome)
 ```
+
+## Final Selected Data
 
 ```{r}
 selected_data <- cbind(outcome_cov, extracted_exposome)
@@ -549,9 +555,9 @@ head(selected_data)
 ```
 
 ```{r}
-selected_data <- select_if(selected_data, is.numeric)
-cor_matrix <- cor(selected_data, method = "pearson")
-cor_matrix <- cor(selected_data, method = "spearman")
+selected_data_corr <- select_if(selected_data, is.numeric)
+cor_matrix <- cor(selected_data_corr, method = "pearson")
+cor_matrix <- cor(selected_data_corr, method = "spearman")
 custom_color_scale <- list(
   c(0, "darkred"),    
   c(0.5, "white"), 
@@ -572,116 +578,520 @@ layout(
 )
 ```
 
-### LASSO
+## Comparing Models with and without Covariates
 
-```{r}
-set.seed(101)
-sample_size <- floor(0.7 * nrow(selected_data)) #70-30 split
+### Chemicals Data
 
-train_indices <- sample(seq_len(nrow(selected_data)), size = sample_size)
+```{r, warning=FALSE}
+chemical_data_only <- selected_data[, chemicals_full]
+covariate_names <- c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")
+covariates_data <- selected_data[, covariate_names]
 
-train_set <- selected_data[train_indices, ]
-validation_set <- selected_data[-train_indices, ]
+# selected and outcome variable
+x <- as.matrix(selected_data[, setdiff(names(selected_data), "hs_zbmi_who")])
+y <- selected_data$hs_zbmi_who
 
-y_train <- train_set$hs_zbmi_who
-X_train <- as.matrix(train_set[, setdiff(names(train_set), "hs_zbmi_who")])  # predictor matrix for training
+# model with covariates
+fit_with_covariates <- cv.glmnet(x, y, alpha = 1, family = "gaussian")
+fit_with_covariates
 
-# fit the LASSO model
-lasso_model <- glmnet(X_train, y_train, alpha = 1)  # alpha = 1 for LASSO
+#model without covariates
+x_chemicals_only <- as.matrix(selected_data[, chemicals_full])
+fit_without_covariates <- cv.glmnet(x_chemicals_only, y, alpha = 1, family = "gaussian")
 
-set.seed(101)
-cv_lasso <- cv.glmnet(X_train, y_train, alpha = 1, type.measure = "mse", nfolds = 10)
+# combine chemical data and covariates for the full model
+full_data <- cbind(chemical_data_only, covariates_data)
+x_full <- as.matrix(full_data)
 
-plot(cv_lasso)
-best_lambda <- cv_lasso$lambda.min  # lambda that minimizes the MSE
-coef(cv_lasso, s = best_lambda)  # coefficients at the chosen lambda
+fit_with_covariates <- cv.glmnet(x_full, y, alpha = 1, family = "gaussian")
+x_chemicals_only <- as.matrix(chemical_data_only)
+fit_without_covariates <- cv.glmnet(x_chemicals_only, y, alpha = 1, family = "gaussian")
 
-y_validation <- validation_set$hs_zbmi_who  # response variable for validation
-X_validation <- as.matrix(validation_set[, setdiff(names(validation_set), "hs_zbmi_who")])  # predictor matrix for validation
+plot(fit_with_covariates)
+plot(fit_without_covariates)
 
-predictions <- predict(lasso_model, s = best_lambda, newx = X_validation)
-mse_lasso <- mean((predictions - y_validation)^2)  # calculate Mean Squared Error on validation data
-print(paste("MSE on validation set: ", mse_lasso))
-coef(lasso_model, s = best_lambda)
+cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
+cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
 ```
 
-### Ridge
+#### Predicting LASSO
 
-```{r}
-# fit the ridge model
-ridge_model <- glmnet(X_train, y_train, alpha = 0)  # alpha = 0 for ridge
-
+```{r, warning=FALSE}
+#LASSO train/test 70-30
 set.seed(101)
-cv_ridge <- cv.glmnet(X_train, y_train, alpha = 0, type.measure = "mse", nfolds = 10)
+train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
+test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
 
-plot(cv_ridge)
-best_lambda <- cv_ridge$lambda.min  # lambda that minimizes the MSE
-coef(cv_ridge, s = best_lambda)  # coefficients at the chosen lambda
+x_train <- as.matrix(selected_data[train_indices, setdiff(names(selected_data), "hs_zbmi_who")])
+y_train <- selected_data$hs_zbmi_who[train_indices]
 
-predictions <- predict(ridge_model, s = best_lambda, newx = X_validation)
-mse_ridge <- mean((predictions - y_validation)^2)  # calculate Mean Squared Error on validation data
-print(paste("MSE on validation set: ", mse_ridge))
-coef(ridge_model, s = best_lambda)
+x_test <- as.matrix(selected_data[test_indices, setdiff(names(selected_data), "hs_zbmi_who")])
+y_test <- selected_data$hs_zbmi_who[test_indices]
+
+fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
+test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
+
+x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
+x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
+
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 1, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 ```
 
-### Elastic Net
+#### Predicting Ridge
 
-```{r}
-# elastic net model
-enet_model <- glmnet(X_train, y_train, alpha = 0.5)  # alpha=0.5 for balanced enet
+```{r, warning=FALSE}
+# RIDGE
+fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
+fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
+test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
 
-set.seed(101)
-cv_enet <- cv.glmnet(X_train, y_train, alpha = 0.5, type.measure = "mse", nfolds = 10)
-plot(cv_enet)
-best_lambda_enet <- cv_enet$lambda.min
-best_lambda_enet
+x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
+x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
 
-# predict on the validation set using the best lambda from CV
-predictions_enet <- predict(enet_model, s = best_lambda_enet, newx = X_validation)
-mse_enet <- mean((predictions_enet - y_validation)^2)
-print(paste("MSE on validation set: ", mse_enet))
-coef(enet_model, s = best_lambda_enet)
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 ```
 
-### Random Forest
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+# ELASTIC NET
+fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
+fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
+test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
+
+x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
+x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
+
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```
+
+### Postnatal Diet Data
+
+```{r, warning=FALSE}
+diet_data <- selected_data[, postnatal_diet]
+
+x_diet <- model.matrix(~ . + 0, data = diet_data)  # adding 0 omits the intercept
+
+covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+
+x_covariates <- model.matrix(~ . + 0, data = covariates)
+
+x_full <- cbind(x_diet, x_covariates)
+
+# no missing values
+x_full[is.na(x_full)] <- 0
+x_diet[is.na(x_diet)] <- 0
+
+y <- as.numeric(selected_data$hs_zbmi_who)
+
+# fit model with postnatal diet and with or without covariates
+fit_with_covariates <- cv.glmnet(x_full, y, alpha = 1, family = "gaussian")
+fit_without_covariates <- cv.glmnet(x_diet, y, alpha = 1, family = "gaussian")
+
+plot(fit_with_covariates)
+plot(fit_without_covariates)
+
+cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
+cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
+```
+
+#### Predicting Lasso
+
+```{r, warning=FALSE}
+# LASSO with train/test
+set.seed(101)  
+train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
+test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
+
+diet_data <- selected_data[, postnatal_diet]
+x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])  
+x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])  
+
+covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ]) 
+x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
+
+x_full_train <- cbind(x_diet_train, x_covariates_train)
+x_full_test <- cbind(x_diet_test, x_covariates_test)
+
+x_full_train[is.na(x_full_train)] <- 0
+x_full_test[is.na(x_full_test)] <- 0
+x_diet_train[is.na(x_diet_train)] <- 0
+x_diet_test[is.na(x_diet_test)] <- 0
+
+y_train <- as.numeric(selected_data$hs_zbmi_who[train_indices])
+y_test <- as.numeric(selected_data$hs_zbmi_who[test_indices])
+
+# fit models
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 1, family = "gaussian")
+fit_with_covariates
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 1, family = "gaussian")
+fit_without_covariates
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Ridge
+
+```{r, warning=FALSE}
+# RIDGE
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0, family = "gaussian")
+fit_with_covariates
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0, family = "gaussian")
+fit_without_covariates
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+#ELASTIC NET
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0.5, family = "gaussian")
+fit_with_covariates
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0.5, family = "gaussian")
+fit_without_covariates
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+
+### Combined Data (Chemicals & Postnatal Diet)
+
+```{r, warning=FALSE}
+x_chemicals <- as.matrix(selected_data[, chemicals_full])
+x_diet <- model.matrix(~ . + 0, data = selected_data[, postnatal_diet])
+
+x_covariates <- model.matrix(~ . + 0, data = selected_data[, covariate_names])
+
+# combine all data into one full model matrix withand without covariates
+x_full_with_covariates <- cbind(x_chemicals, x_diet, x_covariates)
+x_full_without_covariates <- cbind(x_chemicals, x_diet)
+
+# no missing values
+x_full_with_covariates[is.na(x_full_with_covariates)] <- 0
+x_full_without_covariates[is.na(x_full_without_covariates)] <- 0
+
+y <- as.numeric(selected_data$hs_zbmi_who)
+
+# fit model with and without covariates
+fit_with_covariates <- cv.glmnet(x_full_with_covariates, y, alpha = 1, family = "gaussian")
+fit_without_covariates <- cv.glmnet(x_full_without_covariates, y, alpha = 1, family = "gaussian")
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficients Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
+cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
+```
+
+#### Predicting Lasso
+
+```{r, warning=FALSE}
+set.seed(101)
+train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
+test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
+
+diet_data <- selected_data[, postnatal_diet]
+x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])
+x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])
+
+chemical_data <- selected_data[, chemicals_full]
+x_chemical_train <- as.matrix(chemical_data[train_indices, ])
+x_chemical_test <- as.matrix(chemical_data[test_indices, ])
+
+covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ])
+x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
+
+# combine diet and chemical data with and without covariates
+x_combined_train <- cbind(x_diet_train, x_chemical_train)
+x_combined_test <- cbind(x_diet_test, x_chemical_test)
+
+x_full_train <- cbind(x_combined_train, x_covariates_train)
+x_full_test <- cbind(x_combined_test, x_covariates_test)
+
+# make sure no missing values
+x_full_train[is.na(x_full_train)] <- 0
+x_full_test[is.na(x_full_test)] <- 0
+x_combined_train[is.na(x_combined_train)] <- 0
+x_combined_test[is.na(x_combined_test)] <- 0
+
+y_train <- as.numeric(selected_data$hs_zbmi_who[train_indices])
+y_test <- as.numeric(selected_data$hs_zbmi_who[test_indices])
+
+# LASSO
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 1, family = "gaussian")
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 1, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Ridge
+
+```{r, warning=FALSE}
+# RIDGE
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0, family = "gaussian")
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+# ELASTIC NET
+fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0.5, family = "gaussian")
+predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
+mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
+
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0.5, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Group Lasso
+
+```{r, warning=FALSE}
+num_chemical_diet <- ncol(x_chemical_train) + ncol(x_diet_train)
+num_covariates <- ncol(x_covariates_train)
+
+# make sure these add up to the number of columns in x_full_train
+if((num_chemical_diet + num_covariates) != ncol(x_full_train)) {
+  cat("Mismatch in expected column counts\n")
+}
+
+# define groups
+groups <- c(rep(1, num_chemical_diet), rep(2, num_covariates))
+
+# make sure all columns are numeric
+x_full_train <- data.frame(x_full_train)
+x_full_train[] <- lapply(x_full_train, function(x) {
+  if(is.factor(x) || is.character(x)) {
+    as.numeric(as.factor(x))
+  } else {
+    x
+  }
+})
+
+# to ensure all variables numeric
+if(any(sapply(x_full_train, function(x) !is.numeric(x)))) {
+  stop("Some columns are still not numeric.")
+}
+
+if(length(groups) != ncol(x_full_train)) {
+  stop("Group vector length still does not match the number of predictors.")
+} else {
+  cat("Group vector length now matches the number of predictors.\n")
+}
+
+model_group_lasso <- grpreg(x_full_train, y_train, group = groups, penalty = "grLasso")
+
+# x_full_test as numeric
+x_full_test <- data.frame(x_full_test)
+x_full_test[] <- lapply(x_full_test, function(x) {
+  if(is.factor(x) || is.character(x)) {
+    as.numeric(as.factor(x))
+  } else {
+    x
+  }
+})
+
+if(any(sapply(x_full_test, function(x) !is.numeric(x)))) {
+  stop("Some columns in x_full_test are still not numeric.")
+}
+
+x_full_test_matrix <- as.matrix(x_full_test)
+predictions_group_lasso <- predict(model_group_lasso, x_full_test_matrix, type = "response")
+
+actuals <- y_test
+predicted <- predictions_group_lasso
+mse <- mean((actuals - predicted)^2)
+rmse <- sqrt(mse)
+cat("Mean Squared Error:", mse, "\n")
+cat("Root Mean Squared Error:", rmse, "\n")
+```
+
+#### Clustering
+
+Trying to figure out what to do for :
+        * cluster individuals and the individuals would be characterized by having high, medium, or low exposure (discussed last week)
 
 ```{r}
 set.seed(101)
-rf_model <- randomForest(hs_zbmi_who ~ ., data = train_set, ntree = 500, mtry = sqrt(ncol(train_set)))
+x_scaled <- scale(x_full_train)  #scale the training data
+wss <- sapply(1:15, function(k) {
+  kmeans(x_scaled, centers = k, nstart = 20)$tot.withinss
+})
 
-# evaluating the model
-rf_predictions <- predict(rf_model, newdata = validation_set)
-rf_mse <- mean((rf_predictions - validation_set$hs_zbmi_who)^2)
-print(rf_mse)
+plot(1:15, wss, type = "b", pch = 19, frame = FALSE, 
+     xlab = "Number of clusters K", ylab = "Total within-clusters sum of squares")
 
-# feature importance
+#k-means clustering with the determined number of clusters
+k <- which.min(diff(diff(wss))) + 1 
+km <- kmeans(x_scaled, centers = k, nstart = 25)
+
+# plot cluster assignment
+clusplot(x_scaled, km$cluster, color=TRUE, shade=TRUE, 
+         labels=2, lines=0, main=paste("K-means Clustering with", k, "clusters"))
+```
+
+#### Random Forest
+
+```{r}
+x_full_train[] <- lapply(x_full_train, function(x) if(is.character(x)) factor(x) else x)
+x_full_test[] <- lapply(x_full_test, function(x) if(is.character(x)) factor(x) else x)
+
+rf_model <- randomForest(x_full_train, y_train, ntree=500, importance=TRUE)
+
 importance(rf_model)
 varImpPlot(rf_model)
+
+# predict on the test set
+predictions_rf <- predict(rf_model, x_full_test)
+
+mse_rf <- mean((y_test - predictions_rf)^2)
+cat("Random Forest Test MSE:", mse_rf, "\n")
 ```
 
-### Gradient Boosting Machine
+#### GBM
 
 ```{r}
-set.seed(101)
-train_indices <- sample(1:nrow(selected_data), size = 0.7*nrow(selected_data))
-train_set <- selected_data[train_indices, ]
-test_set <- selected_data[-train_indices, ]
-
-gbm_model <- gbm(hs_zbmi_who ~ .,
-                 data = train_set, 
+gbm_model <- gbm(y_train ~ ., data = x_full_train,
                  distribution = "gaussian",
-                 n.trees = 500,
-                 interaction.depth = 4,
-                 shrinkage = 0.01,  # learning rate
-                 cv.folds = 10,  # 10-fold cross-validation
-                 n.minobsinnode = 10
-)
+                 n.trees = 1000,
+                 interaction.depth = 3,
+                 n.minobsinnode = 10,
+                 shrinkage = 0.01,
+                 cv.folds = 5,
+                 verbose = TRUE)
+
+predictions_gbm <- predict(gbm_model, x_full_test, n.trees = 1000, type = "response")
+
+mse_gbm <- mean((y_test - predictions_gbm)^2)
+
+cat("GBM Test MSE:", mse_gbm, "\n")
 
 summary(gbm_model)
-
-predictions <- predict(gbm_model, test_set, n.trees = gbm_model$n.trees)
-mse_gbm <- mean((predictions - test_set$hs_zbmi_who)^2)
-print(paste("Mean Squared Error: ", mse_gbm))
 ```
 
 # Metabolomic Serum Data
