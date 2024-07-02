@@ -27,8 +27,10 @@ library(gbm)
 library(grpreg)
 library(glmnet)
 library(cluster)
+library(pROC)
 library(factoextra)
 library(Hmisc)
+library(grplasso)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
 work.dir <- here::here()
@@ -64,7 +66,7 @@ filtered_chem_diet <- codebook %>%
 # specific covariates
 filtered_covariates <- codebook %>%
   filter(domain == "Covariates" & 
-         variable_name %in% c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
 
 #specific phenotype variables
 filtered_phenotype <- codebook %>%
@@ -438,7 +440,7 @@ corrplot(cor_matrix, method = "circle")
 
 ```{r phenotype summary}
 outcome_BMI <- phenotype %>% 
-  dplyr::select(hs_zbmi_who, hs_bmi_c_cat)
+  dplyr::select(hs_zbmi_who)
 summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
@@ -582,38 +584,6 @@ layout(
 
 ### Chemicals Data
 
-```{r, warning=FALSE}
-chemical_data_only <- selected_data[, chemicals_full]
-covariate_names <- c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")
-covariates_data <- selected_data[, covariate_names]
-
-# selected and outcome variable
-x <- as.matrix(selected_data[, setdiff(names(selected_data), "hs_zbmi_who")])
-y <- selected_data$hs_zbmi_who
-
-# model with covariates
-fit_with_covariates <- cv.glmnet(x, y, alpha = 1, family = "gaussian")
-fit_with_covariates
-
-#model without covariates
-x_chemicals_only <- as.matrix(selected_data[, chemicals_full])
-fit_without_covariates <- cv.glmnet(x_chemicals_only, y, alpha = 1, family = "gaussian")
-
-# combine chemical data and covariates for the full model
-full_data <- cbind(chemical_data_only, covariates_data)
-x_full <- as.matrix(full_data)
-
-fit_with_covariates <- cv.glmnet(x_full, y, alpha = 1, family = "gaussian")
-x_chemicals_only <- as.matrix(chemical_data_only)
-fit_without_covariates <- cv.glmnet(x_chemicals_only, y, alpha = 1, family = "gaussian")
-
-plot(fit_with_covariates)
-plot(fit_without_covariates)
-
-cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
-cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
-```
-
 #### Predicting LASSO
 
 ```{r, warning=FALSE}
@@ -705,35 +675,37 @@ cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
 cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 ```
 
-### Postnatal Diet Data
+Ridge has the better test MSE among the three but, to consider the features the elastic net might be a middle ground, balancing feature selection with model complexity, especially useful if there are many correlated predictors.
 
-```{r, warning=FALSE}
-diet_data <- selected_data[, postnatal_diet]
-
-x_diet <- model.matrix(~ . + 0, data = diet_data)  # adding 0 omits the intercept
-
-covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
-
-x_covariates <- model.matrix(~ . + 0, data = covariates)
-
-x_full <- cbind(x_diet, x_covariates)
-
-# no missing values
-x_full[is.na(x_full)] <- 0
-x_diet[is.na(x_diet)] <- 0
-
-y <- as.numeric(selected_data$hs_zbmi_who)
-
-# fit model with postnatal diet and with or without covariates
-fit_with_covariates <- cv.glmnet(x_full, y, alpha = 1, family = "gaussian")
-fit_without_covariates <- cv.glmnet(x_diet, y, alpha = 1, family = "gaussian")
-
-plot(fit_with_covariates)
-plot(fit_without_covariates)
-
-cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
-cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
+```{r}
+#selected chemicals that were noted in enet
+chemicals_selected <- c(
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_dde_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_detp_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_mepa_cadj_Log2",
+  "hs_oxbe_cadj_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2",
+  "hs_hm_pers_None")
 ```
+
+### Postnatal Diet Data
 
 #### Predicting Lasso
 
@@ -825,6 +797,11 @@ fit_without_covariates
 plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
 plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
 
+best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
 predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
 mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
 
@@ -837,33 +814,6 @@ cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
 
 
 ### Combined Data (Chemicals & Postnatal Diet)
-
-```{r, warning=FALSE}
-x_chemicals <- as.matrix(selected_data[, chemicals_full])
-x_diet <- model.matrix(~ . + 0, data = selected_data[, postnatal_diet])
-
-x_covariates <- model.matrix(~ . + 0, data = selected_data[, covariate_names])
-
-# combine all data into one full model matrix withand without covariates
-x_full_with_covariates <- cbind(x_chemicals, x_diet, x_covariates)
-x_full_without_covariates <- cbind(x_chemicals, x_diet)
-
-# no missing values
-x_full_with_covariates[is.na(x_full_with_covariates)] <- 0
-x_full_without_covariates[is.na(x_full_without_covariates)] <- 0
-
-y <- as.numeric(selected_data$hs_zbmi_who)
-
-# fit model with and without covariates
-fit_with_covariates <- cv.glmnet(x_full_with_covariates, y, alpha = 1, family = "gaussian")
-fit_without_covariates <- cv.glmnet(x_full_without_covariates, y, alpha = 1, family = "gaussian")
-
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficients Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
-
-cat("Model with Covariates - Lambda Min:", fit_with_covariates$lambda.min, "\n")
-cat("Model without Covariates - Lambda Min:", fit_without_covariates$lambda.min, "\n")
-```
 
 #### Predicting Lasso
 
@@ -969,9 +919,14 @@ cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
 cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
 ```
 
-#### Group Lasso
+#### Clustering
 
-```{r, warning=FALSE}
+Trying to figure out what to do for :
+        * cluster individuals and the individuals would be characterized by having high, medium, or low exposure (discussed last week)
+
+```{r}
+set.seed(101)
+
 num_chemical_diet <- ncol(x_chemical_train) + ncol(x_diet_train)
 num_covariates <- ncol(x_covariates_train)
 
@@ -998,12 +953,6 @@ if(any(sapply(x_full_train, function(x) !is.numeric(x)))) {
   stop("Some columns are still not numeric.")
 }
 
-if(length(groups) != ncol(x_full_train)) {
-  stop("Group vector length still does not match the number of predictors.")
-} else {
-  cat("Group vector length now matches the number of predictors.\n")
-}
-
 model_group_lasso <- grpreg(x_full_train, y_train, group = groups, penalty = "grLasso")
 
 # x_full_test as numeric
@@ -1016,29 +965,7 @@ x_full_test[] <- lapply(x_full_test, function(x) {
   }
 })
 
-if(any(sapply(x_full_test, function(x) !is.numeric(x)))) {
-  stop("Some columns in x_full_test are still not numeric.")
-}
-
-x_full_test_matrix <- as.matrix(x_full_test)
-predictions_group_lasso <- predict(model_group_lasso, x_full_test_matrix, type = "response")
-
-actuals <- y_test
-predicted <- predictions_group_lasso
-mse <- mean((actuals - predicted)^2)
-rmse <- sqrt(mse)
-cat("Mean Squared Error:", mse, "\n")
-cat("Root Mean Squared Error:", rmse, "\n")
-```
-
-#### Clustering
-
-Trying to figure out what to do for :
-        * cluster individuals and the individuals would be characterized by having high, medium, or low exposure (discussed last week)
-
-```{r}
-set.seed(101)
-x_scaled <- scale(x_full_train)  #scale the training data
+x_scaled <- scale(x_full_train)
 wss <- sapply(1:15, function(k) {
   kmeans(x_scaled, centers = k, nstart = 20)$tot.withinss
 })
@@ -1094,7 +1021,7 @@ cat("GBM Test MSE:", mse_gbm, "\n")
 summary(gbm_model)
 ```
 
-# Metabolomic Serum Data
+# With Metabolomic Serum Data
 
 First 10 rows and columns of the metabolomic serum data
 
@@ -1102,3 +1029,392 @@ First 10 rows and columns of the metabolomic serum data
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
 kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
 ```
+
+```{r transposed serum data, warning = FALSE}
+metabol_serum_transposed <- as.data.frame(t(metabol_serum.d))
+metabol_serum_transposed$ID <- as.integer(rownames(metabol_serum_transposed))
+
+# Add the ID column to the first position
+metabol_serum_transposed <- metabol_serum_transposed[, c("ID", setdiff(names(metabol_serum_transposed), "ID"))]
+
+# Now, the ID is the first column, and the layout is preserved
+kable(head(metabol_serum_transposed), align = "c", digits = 2, format = "pipe")
+```
+
+```{r adding ID to combine metabolics, include=FALSE}
+# specific covariates
+load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
+filtered_chem_diet <- codebook %>%
+  filter(domain %in% c("Chemicals", "Lifestyles") & period == "Postnatal" & subfamily != "Allergens")
+
+# specific covariates
+filtered_covariates <- codebook %>%
+  filter(domain == "Covariates" & 
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
+
+#specific phenotype variables
+filtered_phenotype <- codebook %>%
+  filter(domain == "Phenotype" & 
+         variable_name %in% c("hs_zbmi_who"))
+
+# combining all necessary variables together
+combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered_phenotype)
+
+outcome_and_cov <- cbind(covariates, outcome_BMI)
+outcome_and_cov <- outcome_and_cov[, !duplicated(colnames(outcome_and_cov))]
+outcome_and_cov <- outcome_and_cov %>%
+  dplyr::select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, hs_zbmi_who)
+#the full chemicals list
+chemicals_full <- c(
+  "hs_as_c_Log2",
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mn_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_tl_cdich_None",
+  "hs_dde_cadj_Log2",
+  "hs_ddt_cadj_Log2",
+  "hs_hcb_cadj_Log2",
+  "hs_pcb118_cadj_Log2",
+  "hs_pcb138_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_pcb180_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_detp_cadj_Log2",
+  "hs_dmdtp_cdich_None",
+  "hs_dmp_cadj_Log2",
+  "hs_dmtp_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pbde47_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfna_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_pfunda_c_Log2",
+  "hs_bpa_cadj_Log2",
+  "hs_bupa_cadj_Log2",
+  "hs_etpa_cadj_Log2",
+  "hs_mepa_cadj_Log2",
+  "hs_oxbe_cadj_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_trcs_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mecpp_cadj_Log2",
+  "hs_mehhp_cadj_Log2",
+  "hs_mehp_cadj_Log2",
+  "hs_meohp_cadj_Log2",
+  "hs_mep_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2",
+  "hs_ohminp_cadj_Log2",
+  "hs_oxominp_cadj_Log2",
+  "FAS_cat_None",
+  "hs_contactfam_3cat_num_None",
+  "hs_hm_pers_None",
+  "hs_participation_3cat_None",
+  "hs_cotinine_cdich_None",
+  "hs_globalexp2_None",
+  "hs_smk_parents_None"
+)
+
+#postnatal diet for child
+postnatal_diet <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_beverages_Ter",
+  "hs_break_cer_Ter",
+  "hs_caff_drink_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "h_legume_preg_Ter",
+  "hs_org_food_Ter",
+  "hs_proc_meat_Ter",
+  "hs_readymade_Ter",
+  "hs_total_bread_Ter",
+  "hs_total_cereal_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_meat_Ter",
+  "hs_total_potatoes_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter",
+  "hs_total_yog_Ter"
+)
+
+all_columns <- c(chemicals_full, postnatal_diet)
+extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
+
+selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
+
+# ID is the common identifier in both datasets
+combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
+head(combined_data)
+```
+
+## LASSO
+
+```{r lasso predictions, warning=FALSE}
+selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
+
+#removing any NA, might be problematic but hard to impute completely
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[ trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+y_train <- train_data$hs_zbmi_who
+x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+y_test <- test_data$hs_zbmi_who
+
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+plot(lasso_model)
+lasso_model$lambda.min
+coef(lasso_model, s = lasso_model$lambda.min)
+predictions <- predict(lasso_model, s = lasso_model$lambda.min, newx = x_test)
+
+test_mse <- mean((predictions - y_test)^2)
+cat("Mean Squared Error on Test Set:", test_mse, "\n")
+```
+
+## Ridge
+
+```{r ridge predictions}
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[ trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+y_train <- train_data$hs_zbmi_who
+x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+y_test <- test_data$hs_zbmi_who
+
+ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
+plot(ridge_model)
+ridge_model$lambda.min
+coef(ridge_model, s = ridge_model$lambda.min)
+predictions <- predict(ridge_model, s = ridge_model$lambda.min, newx = x_test)
+
+test_mse <- mean((predictions - y_test)^2)
+cat("Mean Squared Error on Test Set:", test_mse, "\n")
+```
+
+## Elastic
+
+```{r elastic predictions}
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[ trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+y_train <- train_data$hs_zbmi_who
+x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+y_test <- test_data$hs_zbmi_who
+
+enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
+plot(enet_model)
+enet_model$lambda.min
+coef(enet_model, s = enet_model$lambda.min)
+predictions <- predict(enet_model, s = enet_model$lambda.min, newx = x_test)
+
+test_mse <- mean((predictions - y_test)^2)
+cat("Mean Squared Error on Test Set:", test_mse, "\n")
+```
+
+## Random Forest
+
+```{r rand forest predictions}
+set.seed(101)
+rf_model <- randomForest(hs_zbmi_who ~ ., data = train_data, ntree = 500)
+
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+rf_mse <- mean((rf_predictions - y_test)^2)
+cat("Random Forest Mean Squared Error on Test Set:", rf_mse, "\n")
+
+importance(rf_model)
+varImpPlot(rf_model)
+```
+
+## GBM
+
+```{r gbm predictions}
+set.seed(101)
+gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data, 
+                 distribution = "gaussian",
+                 n.trees = 1000,
+                 interaction.depth = 3,
+                 n.minobsinnode = 10,
+                 shrinkage = 0.01,
+                 cv.folds = 5,
+                 verbose = TRUE)
+best_trees <- gbm.perf(gbm_model, method = "cv")
+gbm_predictions <- predict(gbm_model, newdata = test_data, n.trees = best_trees)
+gbm_mse <- mean((gbm_predictions - y_test)^2)
+cat("GBM Mean Squared Error on Test Set:", gbm_mse, "\n")
+
+gbm_importance <- summary(gbm_model)
+print(gbm_importance)
+```
+
+## Group LASSO
+
+### With Metabolomics
+
+```{r group lasso, warning = FALSE}
+# combined data is clean and remove rows with NA values may have issues
+combined_data <- combined_data %>% na.omit()
+
+#hs_zbmi_who to binary based on median?? is that going to mess it up?
+median_value <- median(combined_data$hs_zbmi_who, na.rm = TRUE)
+combined_data$hs_zbmi_who_binary <- ifelse(combined_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(combined_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
+train_data <- combined_data[trainIndex,]
+test_data  <- combined_data[-trainIndex,]
+
+# clean rows with NAs in any predictors from train_data—may be problematic
+train_data_clean <- train_data[complete.cases(train_data), ]
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - ID, data = train_data_clean)[,-1]
+y_train <- as.numeric(train_data_clean$hs_zbmi_who_binary)
+
+test_data_clean <- test_data[complete.cases(test_data), ]
+
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - ID, data = test_data_clean)[,-1]
+y_test <- as.numeric(test_data_clean$hs_zbmi_who_binary)
+
+# make sure dimensions match
+#dim(x_train): 840 295
+#length(y_train): 840
+#dim(x_test): 358 295
+#length(y_test): 358
+
+num_chemicals <- length(chemicals_full)
+num_diet <- length(postnatal_diet)
+num_metabolomics <- ncol(metabol_serum_transposed) - 1  # Excluding ID
+num_covariates <- ncol(outcome_and_cov) - 2  # Excluding ID and outcome
+
+# combine all the lengths
+total_length <- num_chemicals + num_diet + num_metabolomics + num_covariates
+
+# define groups
+group_indices <- c(
+  rep(1, num_chemicals),  # Group 1: Chemicals
+  rep(2, num_diet),  # Group 2: Postnatal diet
+  rep(3, num_metabolomics), # Group 3: Metabolomics (excluding ID)
+  rep(4, num_covariates)  # Group 4: Covariates (excluding ID and outcome)
+)
+
+# make sure length of group_indices matches x_train
+length(group_indices) == ncol(x_train)
+
+# adjust length if necessary
+if (length(group_indices) < ncol(x_train)) {
+  group_indices <- c(group_indices, rep(5, ncol(x_train) - length(group_indices)))
+}
+
+# making sure length of group_indices matches the number of columns in x_train
+length(group_indices) == ncol(x_train)
+
+# fit the Group LASSO model for logistic regression
+group_lasso_model <- grplasso(x_train, y_train, index = group_indices, lambda = 0.1, model = LogReg())
+group_lasso_coef <- coef(group_lasso_model)
+print(group_lasso_coef)
+
+group_lasso_predictions <- predict(group_lasso_model, newdata = x_test, type = "response")
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(group_lasso_predictions > 0.5, 1, 0)
+
+accuracy <- mean(binary_predictions == y_test)
+cat("Group LASSO Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(factor(binary_predictions), factor(y_test))
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(y_test, group_lasso_predictions)
+plot(roc_curve, main = "ROC Curve for Group LASSO Model (without metabolomics)")
+auc_value <- auc(roc_curve)
+cat("Group LASSO AUC on Test Set:", auc_value, "\n")
+```
+
+### Without Metabolomics
+
+```{r}
+selected_data <- selected_data %>% na.omit()
+
+median_value <- median(selected_data$hs_zbmi_who, na.rm = TRUE)
+selected_data$hs_zbmi_who_binary <- ifelse(selected_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
+train_data <- selected_data[trainIndex,]
+test_data  <- selected_data[-trainIndex,]
+
+train_data_clean <- train_data[complete.cases(train_data), ]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, data = train_data_clean)[,-1]
+y_train <- as.numeric(train_data_clean$hs_zbmi_who_binary)
+
+test_data_clean <- test_data[complete.cases(test_data), ]
+
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, data = test_data_clean)[,-1]
+y_test <- as.numeric(test_data_clean$hs_zbmi_who_binary)
+
+num_chemicals <- length(chemicals_full)
+num_diet <- length(postnatal_diet)
+num_covariates <- ncol(outcome_and_cov) - 2  # excluding outcome and binary outcome
+
+total_length <- num_chemicals + num_diet + num_covariates
+
+group_indices <- c(
+    rep(1, num_chemicals),  # Group 1: Chemicals
+    rep(2, num_diet),  # Group 2: Postnatal diet
+    rep(3, num_covariates)  # Group 3: Covariates (excluding outcome)
+)
+
+length(group_indices) == ncol(x_train)
+
+# Adjust length if necessary
+if (length(group_indices) < ncol(x_train)) {
+    group_indices <- c(group_indices, rep(4, ncol(x_train) - length(group_indices)))
+}
+
+length(group_indices) == ncol(x_train)
+
+group_lasso_model <- grplasso(x_train, y_train, index = group_indices, lambda = 0.1, model = LogReg())
+group_lasso_coef <- coef(group_lasso_model)
+print(group_lasso_coef)
+
+group_lasso_predictions <- predict(group_lasso_model, newdata = x_test, type = "response")
+binary_predictions <- ifelse(group_lasso_predictions > 0.5, 1, 0)
+
+accuracy <- mean(binary_predictions == y_test)
+cat("Group LASSO Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(factor(binary_predictions), factor(y_test))
+conf_matrix
+
+roc_curve <- roc(y_test, group_lasso_predictions)
+plot(roc_curve, main = "ROC Curve for Group LASSO Model (without metabolomics)")
+auc_value <- auc(roc_curve)
+cat("Group LASSO AUC on Test Set:", auc_value, "\n")
+```
+
