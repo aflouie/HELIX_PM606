@@ -443,6 +443,362 @@ table1(
 )
 ```
 
+## All Interested Data
+
+```{r, warning=FALSE}
+outcome_cov <- cbind(covariate_data, outcome_BMI)
+outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
+#the full chemicals list
+chemicals_full <- c(
+  "hs_as_c_Log2",
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mn_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_tl_cdich_None",
+  "hs_dde_cadj_Log2",
+  "hs_ddt_cadj_Log2",
+  "hs_hcb_cadj_Log2",
+  "hs_pcb118_cadj_Log2",
+  "hs_pcb138_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_pcb180_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_detp_cadj_Log2",
+  "hs_dmdtp_cdich_None",
+  "hs_dmp_cadj_Log2",
+  "hs_dmtp_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pbde47_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfna_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_pfunda_c_Log2",
+  "hs_bpa_cadj_Log2",
+  "hs_bupa_cadj_Log2",
+  "hs_etpa_cadj_Log2",
+  "hs_mepa_cadj_Log2",
+  "hs_oxbe_cadj_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_trcs_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mecpp_cadj_Log2",
+  "hs_mehhp_cadj_Log2",
+  "hs_mehp_cadj_Log2",
+  "hs_meohp_cadj_Log2",
+  "hs_mep_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2",
+  "hs_ohminp_cadj_Log2",
+  "hs_oxominp_cadj_Log2",
+  "hs_cotinine_cdich_None",
+  "hs_globalexp2_None"
+)
+
+#postnatal diet for child
+postnatal_diet <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_beverages_Ter",
+  "hs_break_cer_Ter",
+  "hs_caff_drink_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "hs_org_food_Ter",
+  "hs_proc_meat_Ter",
+  "hs_readymade_Ter",
+  "hs_total_bread_Ter",
+  "hs_total_cereal_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_meat_Ter",
+  "hs_total_potatoes_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter",
+  "hs_total_yog_Ter"
+)
+
+chemicals_columns <- c(chemicals_full)
+all_chemicals <- exposome %>% dplyr::select(all_of(chemicals_columns))
+
+diet_columns <- c(postnatal_diet)
+all_diet <- exposome %>% dplyr::select(all_of(diet_columns))
+
+all_columns <- c(chemicals_full, postnatal_diet)
+extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
+
+chemicals_outcome_cov <- cbind(outcome_cov, all_chemicals)
+
+diet_outcome_cov <- cbind(outcome_cov, all_diet)
+
+interested_data <- cbind(outcome_cov, extracted_exposome)
+head(interested_data)
+```
+
+```{r, warning=FALSE}
+interested_data_corr <- select_if(interested_data, is.numeric)
+cor_matrix <- cor(interested_data_corr, method = "pearson")
+cor_matrix <- cor(interested_data_corr, method = "spearman")
+custom_color_scale <- list(
+  c(0, "darkred"),    
+  c(0.5, "white"), 
+  c(1, "darkblue")
+)
+
+plot_ly(
+  z = cor_matrix, 
+  x = colnames(cor_matrix), 
+  y = colnames(cor_matrix), 
+  type = "heatmap",
+  colorscale = custom_color_scale
+) %>%
+layout(
+  title = "Correlation Matrix",
+  xaxis = list(tickangle = -90),
+  yaxis = list(side = "left")
+)
+```
+
+## Comparing Models with and without Covariates
+
+### Chemicals Data
+
+#### Predicting LASSO
+
+```{r, warning=FALSE}
+#LASSO train/test 70-30
+set.seed(101)
+train_indices <- sample(seq_len(nrow(chemicals_outcome_cov)), size = floor(0.7 * nrow(interested_data)))
+test_indices <- setdiff(seq_len(nrow(chemicals_outcome_cov)), train_indices)
+
+x_train <- as.matrix(chemicals_outcome_cov[train_indices, setdiff(names(chemicals_outcome_cov), "hs_zbmi_who")])
+y_train <- chemicals_outcome_cov$hs_zbmi_who[train_indices]
+
+x_test <- as.matrix(chemicals_outcome_cov[test_indices, setdiff(names(chemicals_outcome_cov), "hs_zbmi_who")])
+y_test <- chemicals_outcome_cov$hs_zbmi_who[test_indices]
+
+x_train_chemicals_only <- as.matrix(chemicals_outcome_cov[train_indices, chemicals_full])
+x_test_chemicals_only <- as.matrix(chemicals_outcome_cov[test_indices, chemicals_full])
+
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 1, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```
+
+#### Predicting Ridge
+
+```{r, warning=FALSE}
+# RIDGE
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```
+
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+# ELASTIC NET
+fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
+fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
+test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
+
+plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates_train, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```
+
+### Postnatal Diet Data
+
+#### Predicting Lasso
+
+```{r, warning=FALSE}
+# LASSO with train/test
+set.seed(101)  
+train_indices <- sample(seq_len(nrow(diet_outcome_cov)), size = floor(0.7 * nrow(diet_outcome_cov)))
+test_indices <- setdiff(seq_len(nrow(diet_outcome_cov)), train_indices)
+
+diet_data <- diet_outcome_cov[, postnatal_diet]
+x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])  
+x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])  
+
+covariates <- diet_outcome_cov[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ]) 
+x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
+
+x_full_train <- cbind(x_diet_train, x_covariates_train)
+x_full_test <- cbind(x_diet_test, x_covariates_test)
+
+x_full_train[is.na(x_full_train)] <- 0
+x_full_test[is.na(x_full_test)] <- 0
+x_diet_train[is.na(x_diet_train)] <- 0
+x_diet_test[is.na(x_diet_test)] <- 0
+
+y_train <- as.numeric(diet_outcome_cov$hs_zbmi_who[train_indices])
+y_test <- as.numeric(diet_outcome_cov$hs_zbmi_who[test_indices])
+
+# fit models
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 1, family = "gaussian")
+fit_without_covariates
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Ridge
+
+```{r, warning=FALSE}
+# RIDGE
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0, family = "gaussian")
+fit_without_covariates
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+#ELASTIC NET
+fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0.5, family = "gaussian")
+fit_without_covariates
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+### Combined Data (Chemicals & Postnatal Diet)
+
+#### Predicting Lasso
+
+```{r, warning=FALSE}
+set.seed(101)
+train_indices <- sample(seq_len(nrow(interested_data)), size = floor(0.7 * nrow(interested_data)))
+test_indices <- setdiff(seq_len(nrow(interested_data)), train_indices)
+
+diet_data <- interested_data[, postnatal_diet]
+x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])
+x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])
+
+chemical_data <- interested_data[, chemicals_full]
+x_chemical_train <- as.matrix(chemical_data[train_indices, ])
+x_chemical_test <- as.matrix(chemical_data[test_indices, ])
+
+covariates <- interested_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ])
+x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
+
+# combine diet and chemical data with and without covariates
+x_combined_train <- cbind(x_diet_train, x_chemical_train)
+x_combined_test <- cbind(x_diet_test, x_chemical_test)
+
+x_full_train <- cbind(x_combined_train, x_covariates_train)
+x_full_test <- cbind(x_combined_test, x_covariates_test)
+
+# make sure no missing values
+x_full_train[is.na(x_full_train)] <- 0
+x_full_test[is.na(x_full_test)] <- 0
+x_combined_train[is.na(x_combined_train)] <- 0
+x_combined_test[is.na(x_combined_test)] <- 0
+
+y_train <- as.numeric(interested_data$hs_zbmi_who[train_indices])
+y_test <- as.numeric(interested_data$hs_zbmi_who[test_indices])
+
+# LASSO
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 1, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Ridge
+
+```{r, warning=FALSE}
+# RIDGE
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+#### Predicting Elastic Net
+
+```{r, warning=FALSE}
+# ELASTIC NET
+fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0.5, family = "gaussian")
+predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
+mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
+
+plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+
+best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
+coef(fit_without_covariates, s = best_lambda)
+
+cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```
+
+# Finalized Data
+
+Selected data based on the enet features without covariates.
+
+Still trying to decide if to stick with continuous or dichotomous outcome (for sensitivity/specificity).  Will try to freeze the covariates in the lasso, ridge, or enet.
+
 ```{r selected chemicals, warning=FALSE}
 #selected chemicals that were noted in enet
 chemicals_selected <- c(
@@ -487,8 +843,6 @@ diet_selected <- c(
   "hs_total_veg_Ter"
 )
 ```
-
-# Finalized Data
 
 ```{r final data, warning=FALSE}
 combined_data_selected <- c(
@@ -540,26 +894,8 @@ head(finalized_data)
 numeric_vars <- finalized_data %>%
   dplyr::select(where(is.numeric))
 
-red_blue_colorscale <- list(
-  c(0, 'red'),
-  c(0.5, 'white'),
-  c(1, 'blue')
-)
-
-correlation_matrix <- cor(numeric_vars, use = "complete.obs")
-
-plot_ly(
-  x = colnames(correlation_matrix),
-  y = rownames(correlation_matrix),
-  z = correlation_matrix,
-  type = "heatmap",
-  colorscale = red_blue_colorscale
-) %>%
-  layout(
-    title = "Correlation Matrix",
-    xaxis = list(title = ""),
-    yaxis = list(title = "")
-  )
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = 0.8)
 ```
 
 ```{r train-test, warning=FALSE}
