@@ -18,8 +18,10 @@ library(kableExtra)
 library(tidyverse)
 library(Biobase)
 library(plotly)
+library(profvis)
 library(corrplot)
 library(table1)
+library(tableone)
 library(randomForest)
 library(caret)
 library(nnet)
@@ -30,6 +32,7 @@ library(cluster)
 library(pROC)
 library(factoextra)
 library(Hmisc)
+library(tidyr)
 library(grplasso)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
@@ -84,44 +87,27 @@ kable(combined_codebook, align = "c", format = "html") %>%
 ### Data Summary Exposures: Lifestyles
 
 ```{r Lifestyles summary, attr.output='style="max-height: 100px;"',}
-Lifestyle_Exposures <- combined_codebook$variable_name[combined_codebook$domain=="Lifestyles"]
-lifestyle_exposome <- dplyr::select(exposome, all_of(Lifestyle_Exposures))
+# specific lifestyle exposures
+lifestyle_exposures <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_break_cer_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "hs_org_food_Ter",
+  "hs_proc_meat_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter"
+)
+
+lifestyle_exposome <- dplyr::select(exposome, all_of(lifestyle_exposures))
 summarytools::view(dfSummary(lifestyle_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-```{r}
-#separate numeric and categorical data
-numeric_lifestyle <- lifestyle_exposome %>% 
-  dplyr::select(where(is.numeric))
-
-numeric_lifestyle_long <- pivot_longer(
-  numeric_lifestyle,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_numerical_vars <- unique(numeric_lifestyle_long$variable)
-
-num_plots <- lapply(unique_numerical_vars, function(var) {
-  data <- filter(numeric_lifestyle_long, variable == var)
-  p <- ggplot(data, aes(x = value)) +
-    geom_histogram(bins = 30, fill = "blue") +
-    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
-  print(p)
-  return(p)
-})
-```
-
-The Sum of KIDMED indices, without index9 histogram displays a multimodal distribution with peaks primarily at scores 0, 3, 5, 7, and 10. This suggests that the dataset has several subgroups within the population, each characterized by distinct dietary habits or patterns as measured by the KIDMED index, which assesses adherence to the Mediterranean diet. The distribution is discrete, reflecting integer scores that children have received based on their dietary intake. The modes indicate the most common dietary patterns, suggesting possible clusters of dietary behavior among the children sampled.
-
-The second histogram depicts the distribution of clean and over-reported moderate-to-vigorous physical activity (MVPA) in minutes per day. This histogram shows a right-skewed distribution, indicating that most children report lower levels of physical activity, with a smaller number of children reporting very high levels of activity, which might be over-reported. The peak near the lower end suggests that a significant portion of the sample engages in minimal to moderate amounts of MVPA, while the long tail to the right hints at a few cases with unusually high reported values, possibly due to over-reporting or measurement errors in data collection.
-
-For sedentary behavior in minutes per day, there is a distribution that is slightly left-skewed in the histogram. Most children tend to have higher sedentary time, with a concentration of values towards the right side of the histogram. The distribution suggests that fewer children engage in lower levels of sedentary behavior, indicating a trend towards more inactivity among the sample. This pattern might raise concerns regarding lifestyle habits that contribute to prolonged periods of low physical activity.
-
-The distribution of total hours of sleep per night (averaged over weekdays and weekends) exhibits a nearly normal distribution. This suggests that most children in the study have a consistent sleep duration with the bulk of the data clustering around the mean. The symmetry of the distribution indicates a healthy variance in sleep hours among the children, without significant extremes in either insufficient or excessive sleep, which is a positive indication of regular sleep patterns in this population.
-
-```{r}
+```{r categorical lifestyle, warning=FALSE}
 categorical_lifestyle <- lifestyle_exposome %>% 
   dplyr::select(where(is.factor))
 
@@ -149,11 +135,7 @@ Breastfeeding Duration: Majority of observations are in the highest duration cat
 
 Bakery Products: Shows a relatively even distribution across the three categories, indicating varied consumption levels of bakery products among participants.
 
-Beverages: A significant number of participants consume beverages at the highest level, indicating a preference or higher consumption of beverages like sodas.
-
 Breakfast Cereal: The highest category of cereal consumption is the most common, suggesting a preference for or greater consumption of cereals.
-
-Caffeinated/Energy Drinks: Displays a high number of participants avoiding or consuming very low quantities of caffeinated or energy drinks.
 
 Dairy: Shows a fairly even distribution across all categories, indicating a uniform consumption pattern of dairy products.
 
@@ -162,8 +144,6 @@ Fast Food: Most participants fall into the middle category, indicating moderate 
 Organic Food: Most participants either consume a lot of or no organic food, with fewer in the middle range.
 
 Processed Meat: Consumption levels are fairly evenly distributed, indicating varied dietary habits regarding processed meats.
-
-Ready-Made Meals: Many participants rarely consume ready-made meals, with a significant number also in the highest consumption category.
 
 Bread: Distribution shows a significant leaning towards higher bread consumption.
 
@@ -175,34 +155,41 @@ Fruits: High fruit consumption is the most common, with fewer participants in th
 
 Added Fats: More participants consume added fats at the lowest and highest levels, with fewer in the middle.
 
-Meat: Consumption of meat is highest in the middle category.
-
-Potatoes: Shows a tendency towards either low or high consumption, with fewer people in the middle range.
-
 Sweets: High consumption of sweets is the most common, indicating a preference for or higher access to sugary foods.
 
 Vegetables: Most participants consume a high amount of vegetables.
 
-Yogurt: Shows a preference for either very high or very low yogurt consumption, with fewer participants in the middle.
-
-
-```{r}
-numeric_lifestyle <- select_if(lifestyle_exposome, is.numeric)
-cor_matrix <- cor(numeric_lifestyle, method = "pearson")
-cor_matrix <- cor(numeric_lifestyle, method = "spearman")
-corrplot(cor_matrix, method = "circle")
-```
-
 ### Data Summary Exposures: Chemicals
 
 ```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
-Chemical_Exposures <- combined_codebook$variable_name[combined_codebook$domain=="Chemicals"]
-chemical_exposome <- exposome %>%
-  dplyr::select(all_of(Chemical_Exposures))
+# specific chemical exposures
+chemical_exposures <- c(
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_dde_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2"
+)
+
+chemical_exposome <- dplyr::select(exposome, all_of(chemical_exposures))
 summarytools::view(dfSummary(chemical_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-```{r}
+```{r numeric chemicals, warning=FALSE}
 #separate numeric and categorical data
 numeric_chemical <- chemical_exposome %>% 
   dplyr::select(where(is.numeric))
@@ -226,8 +213,6 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
 })
 ```
 
-Arsenic (hs_as_c_Log2): This histogram shows a bimodal distribution of arsenic levels, with two prominent peaks. Such a distribution might suggest two different populations or sources of exposure among the study participants.
-
 Cadmium (hs_cd_c_Log2): The distribution of cadmium levels is skewed to the right, indicating that most participants have lower exposure levels, with a few cases showing significantly higher exposures.
 
 Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew. This suggests a common source of exposure with varying levels among the population.
@@ -238,31 +223,21 @@ Copper (hs_cu_c_Log2): Shows a right-skewed distribution, suggesting that while 
 
 Mercury (hs_hg_c_Log2): This distribution is also right-skewed, common for environmental pollutants, where a majority have lower exposure levels, and a minority have high exposure levels.
 
-Manganese (hs_mn_c_Log2): The histogram for manganese displays a bell-shaped distribution, indicating a normal distribution of manganese levels among the participants.
-
 Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures.
 
 Lead (hs_pb_c_Log2): The distribution is slightly right-skewed, indicating higher exposure levels in a smaller group of the population compared to the majority.
 
-DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population.
+DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population..
 
-DDT (hs_ddt_cadj_Log2): This histogram displays a multi-modal distribution, suggesting different sources or durations of exposure among the population.
+PCB 153 (hs_pcb153_cadj_Log2): Has a distribution with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population.
 
-Hexachlorobenzene (hs_hcb_cadj_Log2): Exhibits a right-skewed distribution with a long tail, indicating that most people have lower exposure levels with some outliers experiencing very high exposures.
+PCB 170 (hs_pcb170_cadj_Log2): This histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
 
-PCB 118, 138, 153 (hs_pcb118_cadj_Log2, hs_pcb138_cadj_Log2, hs_pcb153_cadj_Log2): All three PCBs show similar distributions with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population.
+DEP and PBDE 153: These histograms mostly show multimodal distributions (more than one peak), suggesting different exposure sources or groups within the population that have distinct exposure levels. The multiple peaks could indicate varied exposure pathways or differences in how these chemicals are metabolized or retained in the body.
 
-PCB 170 and PCB 180: Both histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
-
-Sum of PCBs: The histogram is approximately normally distributed, centered around a higher value compared to individual PCBs, indicating a collective higher average exposure when all measured PCBs are considered together.
-
-DEP, DETP, DMTP, DMDTP, PBDE 153, and PBDE 47: These histograms mostly show multimodal distributions (more than one peak), suggesting different exposure sources or groups within the population that have distinct exposure levels. The multiple peaks could indicate varied exposure pathways or differences in how these chemicals are metabolized or retained in the body.
-
-PFHxS, PFNA, and PFOA: These perfluorinated compounds display a roughly normal distribution skewed right, suggesting a common source of exposure among the population, but with some individuals experiencing higher exposures.
+PFHxS and PFOA: These perfluorinated compounds display a roughly normal distribution skewed right, suggesting a common source of exposure among the population, but with some individuals experiencing higher exposures.
 
 PFOS and PFUnDA: The histograms show a single, sharp peak with a rapid decline, indicating that most individuals have similar exposure levels, likely due to common environmental sources or regulatory controls limiting variability.
-
-BPA: The histogram is sharply peaked near zero with a long tail to the right, indicating low exposure for most individuals but significant exposure for a few, possibly due to specific product use or occupational exposure.
 
 MBZP (Monobenzyl Phthalate): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures.
 
@@ -276,53 +251,7 @@ MEOHP (Mono-2-ethyl-5-oxohexyl phthalate): This histogram shows a distribution w
 
 MEP (Mono-ethyl phthalate): The distribution is right-skewed, similar to others, showing most subjects with low to moderate levels of exposure, but a few have much higher levels.
 
-OXINP (Oxidized Isoparaffin): This histogram shows a central peak with a fast decline, indicating a concentration of values around a specific point which might suggest a common exposure level among the subjects.
-
-Sum of DEHP Metabolites: This shows a broad distribution with a peak towards the lower end, indicating varied exposure levels among the subjects, with most experiencing lower exposures.
-
-Personal Care Product Use: The histogram displays a highly skewed distribution with multiple peaks, reflecting varied usage patterns among subjects, with some showing particularly high usage levels.
-
-```{r}
-categorical_chemical <- chemical_exposome %>% 
-  dplyr::select(where(is.factor))
-
-categorical_chemical_long <- pivot_longer(
-  categorical_chemical,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_categorical_vars <- unique(categorical_chemical_long$variable)
-categorical_plots <- lapply(unique_categorical_vars, function(var) {
-  data <- filter(categorical_chemical_long, variable == var)
-  
-  p <- ggplot(data, aes(x = value, fill = value)) +
-    geom_bar(stat = "count") +
-    labs(title = paste("Distribution of", var), x = var, y = "Count")
-  
-  print(p)
-  return(p)
-})
-```
-
-hs_t_cdich_None (Detected vs. Undetected):The vast majority of samples were undetected for this particular chemical, with only a small fraction showing detection.
-
-hs_dmdtp_cdich_None (Detected vs. Undetected): Similar to the previous, most samples were undetected, but a higher proportion shows detection compared to the first chemical.
-
-FAS_cat_None (Family Affluence Scale categories - Low, Middle, High): This shows the distribution of family affluence categories where the largest group is the high affluence, followed by middle, with the fewest in the low category.
-
-hs_contactfam_3cat_num_None (Frequency of contact with family): Most individuals reported daily (almost daily) contact with family, a smaller number reported weekly contact, and the fewest reported less frequent than weekly contact.
-
-hs_participation_3cat_None (Participation in organisations): A large number of individuals do not participate in any organisation, a substantial number participate in one, and a smaller group in two or more.
-
-hs_cotinine_cdich_None (Detected vs. Undetected): Cotinine detection is high, indicating exposure to nicotine, with a significant number of samples showing detection versus undetected.
-
-hs_globalexp2_None (Global Exposure - Exposure vs. No Exposure): This represents overall exposure to some condition or factor, with a larger proportion having no exposure compared to those with exposure.
-
-hs_smk_parents_None (Smoking status of parents - Both, Neither, One): The largest group reported that neither parent smokes, a significant number reported one smoking parent, and the smallest group reported both parents smoke.
-
-```{r}
+```{r chemical corr, warning=FALSE}
 numeric_chemical <- select_if(chemical_exposome, is.numeric)
 cor_matrix <- cor(numeric_chemical, method = "pearson")
 cor_matrix <- cor(numeric_chemical, method = "spearman")
@@ -348,13 +277,23 @@ layout(
 
 ### Data Summary Covariates
 
-```{r covariate summary, results='asis'}
-summarytools::view(dfSummary(covariates, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
+```{r covariates, warning=FALSE}
+# Specified covariates
+specific_covariates <- c(
+  "e3_sex_None", 
+  "e3_yearbir_None", 
+  "h_edumc_None", 
+  "h_cohort", 
+  "hs_child_age_None"
+)
+
+covariate_data <- dplyr::select(covariates, all_of(specific_covariates))
+summarytools::view(dfSummary(covariate_data, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-```{r}
+```{r covariates numeric, warning=FALSE}
 #separate numeric and categorical data
-numeric_covariates <- covariates %>% 
+numeric_covariates <- covariate_data %>% 
   dplyr::select(where(is.numeric))
 
 numeric_covariates_long <- pivot_longer(
@@ -376,24 +315,10 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
 })
 ```
 
-ID: This histogram appears to show a uniform distribution of IDs over a range, with all IDs evenly spaced. This typical pattern is expected in a dataset where IDs are systematically assigned.
-
-Maternal BMI (h_mbmi): The distribution of maternal BMI is roughly normal but slightly right-skewed, indicating that more individuals are on the higher side of the BMI scale. The peak of the histogram around the 25-30 range suggests a concentration of values in this area, which is typical for adult populations.
-
-Weight Gain (hs_wgtgain): This histogram displays a bimodal distribution of weight gain, with significant peaks around 10 and another around 20. This could indicate two common patterns or recommendations in weight gain during pregnancy or another health-related period.
-
-Gestational Age at Childbirth (e3_gac): The distribution is centered around the 40-week mark, which is typical for full-term pregnancies. There is a sharp peak at around 40 weeks, showing that most childbirths occur at this gestational age.
-
-Maternal Age (h_age): This histogram shows a roughly normal distribution with a peak around the early 30s, suggesting that this is the most common age range for the mothers in the dataset.
-
 Child's Age (hs_child_age): This histogram is multimodal, reflecting several peaks across different ages. This could be indicative of the data collection points or particular age groups being studied.
 
-Child's Height (hs_c_height): The data is approximately normally distributed with a slight right skew. The majority of the measurements cluster around the mean, which suggests typical growth patterns.
-
-Child's Weight (hs_c_weight): This histogram is right-skewed, indicating that while most children's weights are within a normal range, there is a long tail of children who weigh more, which might suggest variations in growth or cases of overweight.
-
-```{r}
-categorical_covariates <- covariates %>% 
+```{r covariates categorical, warning=FALSE}
+categorical_covariates <- covariate_data %>% 
   dplyr::select(where(is.factor))
 
 categorical_covariates_long <- pivot_longer(
@@ -424,18 +349,6 @@ Year of Birth (e3_yearbir): This chart shows that the majority of subjects were 
 
 Educational Level (h_educmc): Represents three categories of educational attainment, with category 3 having the highest count, suggesting a higher level of education among the majority of the subjects.
 
-Native Language (h_native): Shows the count of parents by their native country status. The majority are from category 2.
-
-Parity (h_parity): The chart categorizes subjects based on the number of children they have. The largest group is those with no children, followed by those with one child, and a smaller group with two children.
-
-
-```{r}
-numeric_covariate <- select_if(covariates, is.numeric)
-cor_matrix <- cor(numeric_covariate, method = "pearson")
-cor_matrix <- cor(numeric_covariate, method = "spearman")
-corrplot(cor_matrix, method = "circle")
-```
-
 ### Data Summary Outcome: Phenotype
 
 ```{r phenotype summary}
@@ -444,240 +357,93 @@ outcome_BMI <- phenotype %>%
 summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-# Models to Consider
+```{r combining all data, warning=FALSE}
+# Combine all selected data
+combined_data <- cbind(covariate_data, lifestyle_exposome, chemical_exposome, outcome_BMI)
 
-```{r}
-outcome_cov <- cbind(covariates, outcome_BMI)
-outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
-outcome_cov <- outcome_cov %>%
-  dplyr::select(hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, hs_zbmi_who)
-summary_table <- dfSummary(outcome_cov, 
-                           varnumbers = TRUE, 
-                           valid.col = FALSE, 
-                           graph.col = TRUE, 
-                           style = "multiline")
+# Ensure no duplicated columns
+combined_data <- combined_data[, !duplicated(colnames(combined_data))]
 
-print(summary_table, method = "render", plain.ascii = FALSE, style = "grid")
-```
+# Convert sex variable to a factor for stratification
+combined_data$e3_sex_None <- as.factor(combined_data$e3_sex_None)
+levels(combined_data$e3_sex_None) <- c("Male", "Female")
 
-```{r}
-#the full chemicals list
-chemicals_full <- c(
-  "hs_as_c_Log2",
-  "hs_cd_c_Log2",
-  "hs_co_c_Log2",
-  "hs_cs_c_Log2",
-  "hs_cu_c_Log2",
-  "hs_hg_c_Log2",
-  "hs_mn_c_Log2",
-  "hs_mo_c_Log2",
-  "hs_pb_c_Log2",
-  "hs_tl_cdich_None",
-  "hs_dde_cadj_Log2",
-  "hs_ddt_cadj_Log2",
-  "hs_hcb_cadj_Log2",
-  "hs_pcb118_cadj_Log2",
-  "hs_pcb138_cadj_Log2",
-  "hs_pcb153_cadj_Log2",
-  "hs_pcb170_cadj_Log2",
-  "hs_pcb180_cadj_Log2",
-  "hs_dep_cadj_Log2",
-  "hs_detp_cadj_Log2",
-  "hs_dmdtp_cdich_None",
-  "hs_dmp_cadj_Log2",
-  "hs_dmtp_cadj_Log2",
-  "hs_pbde153_cadj_Log2",
-  "hs_pbde47_cadj_Log2",
-  "hs_pfhxs_c_Log2",
-  "hs_pfna_c_Log2",
-  "hs_pfoa_c_Log2",
-  "hs_pfos_c_Log2",
-  "hs_pfunda_c_Log2",
-  "hs_bpa_cadj_Log2",
-  "hs_bupa_cadj_Log2",
-  "hs_etpa_cadj_Log2",
-  "hs_mepa_cadj_Log2",
-  "hs_oxbe_cadj_Log2",
-  "hs_prpa_cadj_Log2",
-  "hs_trcs_cadj_Log2",
-  "hs_mbzp_cadj_Log2",
-  "hs_mecpp_cadj_Log2",
-  "hs_mehhp_cadj_Log2",
-  "hs_mehp_cadj_Log2",
-  "hs_meohp_cadj_Log2",
-  "hs_mep_cadj_Log2",
-  "hs_mibp_cadj_Log2",
-  "hs_mnbp_cadj_Log2",
-  "hs_ohminp_cadj_Log2",
-  "hs_oxominp_cadj_Log2",
-  "FAS_cat_None",
-  "hs_contactfam_3cat_num_None",
-  "hs_hm_pers_None",
-  "hs_participation_3cat_None",
-  "hs_cotinine_cdich_None",
-  "hs_globalexp2_None",
-  "hs_smk_parents_None"
-)
+render_cont <- function(x) {
+  with(stats.default(x), sprintf("%0.2f (%0.2f)", MEAN, SD))
+}
 
-#postnatal diet for child
-postnatal_diet <- c(
-  "h_bfdur_Ter",
-  "hs_bakery_prod_Ter",
-  "hs_beverages_Ter",
-  "hs_break_cer_Ter",
-  "hs_caff_drink_Ter",
-  "hs_dairy_Ter",
-  "hs_fastfood_Ter",
-  "h_legume_preg_Ter",
-  "hs_org_food_Ter",
-  "hs_proc_meat_Ter",
-  "hs_readymade_Ter",
-  "hs_total_bread_Ter",
-  "hs_total_cereal_Ter",
-  "hs_total_fish_Ter",
-  "hs_total_fruits_Ter",
-  "hs_total_lipids_Ter",
-  "hs_total_meat_Ter",
-  "hs_total_potatoes_Ter",
-  "hs_total_sweets_Ter",
-  "hs_total_veg_Ter",
-  "hs_total_yog_Ter"
-)
+render_cat <- function(x) {
+  c("", sapply(stats.default(x), function(y) with(y, sprintf("%d (%0.1f %%)", FREQ, PCT))))
+}
 
-all_columns <- c(chemicals_full, postnatal_diet)
-extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
-head(extracted_exposome)
-```
+# Define the formula for table1
+table1_formula <- ~ 
+  hs_child_age_None + e3_yearbir_None + h_edumc_None + h_cohort +
+  hs_zbmi_who +
+  h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
+  hs_proc_meat_Ter +
+  hs_total_fish_Ter + hs_total_fruits_Ter + hs_total_lipids_Ter + hs_total_sweets_Ter + hs_total_veg_Ter +
+  hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 + hs_cu_c_Log2 +
+  hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 + hs_pcb153_cadj_Log2 +
+  hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 + hs_pbde153_cadj_Log2 +
+  hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + hs_prpa_cadj_Log2 +
+  hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | e3_sex_None
 
-## Final Selected Data
-
-```{r}
-selected_data <- cbind(outcome_cov, extracted_exposome)
-head(selected_data)
-```
-
-```{r}
-selected_data_corr <- select_if(selected_data, is.numeric)
-cor_matrix <- cor(selected_data_corr, method = "pearson")
-cor_matrix <- cor(selected_data_corr, method = "spearman")
-custom_color_scale <- list(
-  c(0, "darkred"),    
-  c(0.5, "white"), 
-  c(1, "darkblue")
-)
-
-plot_ly(
-  z = cor_matrix, 
-  x = colnames(cor_matrix), 
-  y = colnames(cor_matrix), 
-  type = "heatmap",
-  colorscale = custom_color_scale
-) %>%
-layout(
-  title = "Correlation Matrix",
-  xaxis = list(tickangle = -90),
-  yaxis = list(side = "left")
+# Create the table
+table1(
+  table1_formula,
+  data = combined_data,
+  render.continuous = render_cont,
+  render.categorical = render_cat,
+  overall = TRUE,
+  topclass = "Rtable1-shade"
 )
 ```
 
-## Comparing Models with and without Covariates
-
-### Chemicals Data
-
-#### Predicting LASSO
-
-```{r, warning=FALSE}
-#LASSO train/test 70-30
-set.seed(101)
-train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
-test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
-
-x_train <- as.matrix(selected_data[train_indices, setdiff(names(selected_data), "hs_zbmi_who")])
-y_train <- selected_data$hs_zbmi_who[train_indices]
-
-x_test <- as.matrix(selected_data[test_indices, setdiff(names(selected_data), "hs_zbmi_who")])
-y_test <- selected_data$hs_zbmi_who[test_indices]
-
-fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
-fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
-test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
-
-x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
-x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
-
-fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 1, family = "gaussian")
-fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
-test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
-
-plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
-plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates_train, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```{r descriptive table, warning=FALSE}
+combined_data$h_cohort <- as.factor(combined_data$h_cohort)
+# Create the table
+table1(
+  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None + h_edumc_None +
+    hs_zbmi_who + h_bfdur_Ter + hs_bakery_prod_Ter +
+    hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter +
+    hs_org_food_Ter + hs_proc_meat_Ter + hs_total_fish_Ter + hs_total_fruits_Ter +
+    hs_total_lipids_Ter +
+    hs_total_sweets_Ter + hs_total_veg_Ter +
+    hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 + hs_cu_c_Log2 +
+    hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 + hs_pcb153_cadj_Log2 +
+    hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 + hs_pbde153_cadj_Log2 +
+    hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + hs_prpa_cadj_Log2 +
+    hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | h_cohort,
+    data = combined_data,
+  render.continuous = render_cont,
+  render.categorical = render_cat,
+  overall = TRUE,
+  topclass = "Rtable1-shade"
+)
 ```
 
-#### Predicting Ridge
-
-```{r, warning=FALSE}
-# RIDGE
-fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
-fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
-test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
-
-x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
-x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
-
-fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0, family = "gaussian")
-fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
-test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
-
-plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
-plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates_train, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+```{r descriptive table 2, warning=FALSE}
+combined_data$h_edumc_None <- as.factor(combined_data$h_edumc_None)
+table1(
+  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None + hs_zbmi_who +
+    h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
+    hs_proc_meat_Ter +
+    hs_total_fish_Ter + hs_total_fruits_Ter + hs_total_lipids_Ter + hs_total_sweets_Ter + 
+    hs_total_veg_Ter + hs_cd_c_Log2 + hs_co_c_Log2 + 
+    hs_cs_c_Log2 + hs_cu_c_Log2 + hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 +
+    hs_pcb153_cadj_Log2 + hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 +
+    hs_pbde153_cadj_Log2 + hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + 
+    hs_prpa_cadj_Log2 + hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | h_edumc_None,
+  data = combined_data,
+  render.continuous = render_cont,
+  render.categorical = render_cat,
+  overall = TRUE,
+  topclass = "Rtable1-shade"
+)
 ```
 
-#### Predicting Elastic Net
-
-```{r, warning=FALSE}
-# ELASTIC NET
-fit_with_covariates_train <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
-fit_with_covariates_test <- predict(fit_with_covariates_train, s = "lambda.min", newx = x_test)
-test_mse_with_covariates <- mean((y_test - fit_with_covariates_test)^2)
-
-x_train_chemicals_only <- as.matrix(selected_data[train_indices, chemicals_full])
-x_test_chemicals_only <- as.matrix(selected_data[test_indices, chemicals_full])
-
-fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
-fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
-test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
-
-plot(fit_with_covariates_train, xvar = "lambda", main = "Coefficients Path (With Covariates)")
-plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates_train, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates_train, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", test_mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
-```
-
-Ridge has the better test MSE among the three but, to consider the features the elastic net might be a middle ground, balancing feature selection with model complexity, especially useful if there are many correlated predictors.
-
-```{r}
+```{r selected chemicals, warning=FALSE}
 #selected chemicals that were noted in enet
 chemicals_selected <- c(
   "hs_cd_c_Log2",
@@ -701,309 +467,203 @@ chemicals_selected <- c(
   "hs_prpa_cadj_Log2",
   "hs_mbzp_cadj_Log2",
   "hs_mibp_cadj_Log2",
-  "hs_mnbp_cadj_Log2",
-  "hs_hm_pers_None")
+  "hs_mnbp_cadj_Log2")
 ```
 
-### Postnatal Diet Data
-
-#### Predicting Lasso
-
-```{r, warning=FALSE}
-# LASSO with train/test
-set.seed(101)  
-train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
-test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
-
-diet_data <- selected_data[, postnatal_diet]
-x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])  
-x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])  
-
-covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
-x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ]) 
-x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
-
-x_full_train <- cbind(x_diet_train, x_covariates_train)
-x_full_test <- cbind(x_diet_test, x_covariates_test)
-
-x_full_train[is.na(x_full_train)] <- 0
-x_full_test[is.na(x_full_test)] <- 0
-x_diet_train[is.na(x_diet_train)] <- 0
-x_diet_test[is.na(x_diet_test)] <- 0
-
-y_train <- as.numeric(selected_data$hs_zbmi_who[train_indices])
-y_test <- as.numeric(selected_data$hs_zbmi_who[test_indices])
-
-# fit models
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 1, family = "gaussian")
-fit_with_covariates
-fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 1, family = "gaussian")
-fit_without_covariates
-
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+```{r selected diet, warning=FALSE}
+#selected diets that were noted in enet
+diet_selected <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_break_cer_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "hs_org_food_Ter",
+  "hs_proc_meat_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter"
+)
 ```
 
-#### Predicting Ridge
+# Finalized Data
 
-```{r, warning=FALSE}
-# RIDGE
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0, family = "gaussian")
-fit_with_covariates
-fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0, family = "gaussian")
-fit_without_covariates
+```{r final data, warning=FALSE}
+combined_data_selected <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "hs_org_food_Ter",
+  "hs_readymade_Ter",
+  "hs_total_bread_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_potatoes_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter",
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_dde_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2"
+)
 
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+outcome_cov <- cbind(covariate_data, outcome_BMI)
+outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
 
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
+finalized_columns <- c(combined_data_selected)
+final_selected_data <- exposome %>% dplyr::select(all_of(finalized_columns))
 
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+finalized_data <- cbind(outcome_cov, final_selected_data)
+head(finalized_data)
 ```
 
-#### Predicting Elastic Net
+```{r corr plot, warning = FALSE}
+numeric_vars <- finalized_data %>%
+  dplyr::select(where(is.numeric))
 
-```{r, warning=FALSE}
-#ELASTIC NET
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0.5, family = "gaussian")
-fit_with_covariates
-fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0.5, family = "gaussian")
-fit_without_covariates
+red_blue_colorscale <- list(
+  c(0, 'red'),
+  c(0.5, 'white'),
+  c(1, 'blue')
+)
 
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
+correlation_matrix <- cor(numeric_vars, use = "complete.obs")
 
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+plot_ly(
+  x = colnames(correlation_matrix),
+  y = rownames(correlation_matrix),
+  z = correlation_matrix,
+  type = "heatmap",
+  colorscale = red_blue_colorscale
+) %>%
+  layout(
+    title = "Correlation Matrix",
+    xaxis = list(title = ""),
+    yaxis = list(title = "")
+  )
 ```
 
-
-### Combined Data (Chemicals & Postnatal Diet)
-
-#### Predicting Lasso
-
-```{r, warning=FALSE}
-set.seed(101)
-train_indices <- sample(seq_len(nrow(selected_data)), size = floor(0.7 * nrow(selected_data)))
-test_indices <- setdiff(seq_len(nrow(selected_data)), train_indices)
-
-diet_data <- selected_data[, postnatal_diet]
-x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])
-x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])
-
-chemical_data <- selected_data[, chemicals_full]
-x_chemical_train <- as.matrix(chemical_data[train_indices, ])
-x_chemical_test <- as.matrix(chemical_data[test_indices, ])
-
-covariates <- selected_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
-x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ])
-x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
-
-# combine diet and chemical data with and without covariates
-x_combined_train <- cbind(x_diet_train, x_chemical_train)
-x_combined_test <- cbind(x_diet_test, x_chemical_test)
-
-x_full_train <- cbind(x_combined_train, x_covariates_train)
-x_full_test <- cbind(x_combined_test, x_covariates_test)
-
-# make sure no missing values
-x_full_train[is.na(x_full_train)] <- 0
-x_full_test[is.na(x_full_test)] <- 0
-x_combined_train[is.na(x_combined_train)] <- 0
-x_combined_test[is.na(x_combined_test)] <- 0
-
-y_train <- as.numeric(selected_data$hs_zbmi_who[train_indices])
-y_test <- as.numeric(selected_data$hs_zbmi_who[test_indices])
-
-# LASSO
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 1, family = "gaussian")
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 1, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
-
-#### Predicting Ridge
-
-```{r, warning=FALSE}
-# RIDGE
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0, family = "gaussian")
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
-
-#### Predicting Elastic Net
-
-```{r, warning=FALSE}
-# ELASTIC NET
-fit_with_covariates <- cv.glmnet(x_full_train, y_train, alpha = 0.5, family = "gaussian")
-predictions_with_covariates <- predict(fit_with_covariates, s = "lambda.min", newx = x_full_test)
-mse_with_covariates <- mean((y_test - predictions_with_covariates)^2)
-
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0.5, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_with_covariates, xvar = "lambda", main = "Coefficient Path (With Covariates)")
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_with_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_with_covariates, s = best_lambda)  # coefficients at the chosen lambda
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model with Covariates - Test MSE:", mse_with_covariates, "\n")
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
-
-#### Clustering
-
-Trying to figure out what to do for :
-        * cluster individuals and the individuals would be characterized by having high, medium, or low exposure (discussed last week)
-
-```{r}
+```{r train-test, warning=FALSE}
 set.seed(101)
 
-num_chemical_diet <- ncol(x_chemical_train) + ncol(x_diet_train)
-num_covariates <- ncol(x_covariates_train)
+# Splitting data into training and test sets
+train_indices <- sample(seq_len(nrow(finalized_data)), size = floor(0.7 * nrow(finalized_data)))
+test_indices <- setdiff(seq_len(nrow(finalized_data)), train_indices)
 
-# make sure these add up to the number of columns in x_full_train
-if((num_chemical_diet + num_covariates) != ncol(x_full_train)) {
-  cat("Mismatch in expected column counts\n")
-}
+# Creating training and test datasets
+train_data <- finalized_data[train_indices, ]
+test_data <- finalized_data[test_indices, ]
 
-# define groups
-groups <- c(rep(1, num_chemical_diet), rep(2, num_covariates))
-
-# make sure all columns are numeric
-x_full_train <- data.frame(x_full_train)
-x_full_train[] <- lapply(x_full_train, function(x) {
-  if(is.factor(x) || is.character(x)) {
-    as.numeric(as.factor(x))
-  } else {
-    x
-  }
-})
-
-# to ensure all variables numeric
-if(any(sapply(x_full_train, function(x) !is.numeric(x)))) {
-  stop("Some columns are still not numeric.")
-}
-
-model_group_lasso <- grpreg(x_full_train, y_train, group = groups, penalty = "grLasso")
-
-# x_full_test as numeric
-x_full_test <- data.frame(x_full_test)
-x_full_test[] <- lapply(x_full_test, function(x) {
-  if(is.factor(x) || is.character(x)) {
-    as.numeric(as.factor(x))
-  } else {
-    x
-  }
-})
-
-x_scaled <- scale(x_full_train)
-wss <- sapply(1:15, function(k) {
-  kmeans(x_scaled, centers = k, nstart = 20)$tot.withinss
-})
-
-plot(1:15, wss, type = "b", pch = 19, frame = FALSE, 
-     xlab = "Number of clusters K", ylab = "Total within-clusters sum of squares")
-
-#k-means clustering with the determined number of clusters
-k <- which.min(diff(diff(wss))) + 1 
-km <- kmeans(x_scaled, centers = k, nstart = 25)
-
-# plot cluster assignment
-clusplot(x_scaled, km$cluster, color=TRUE, shade=TRUE, 
-         labels=2, lines=0, main=paste("K-means Clustering with", k, "clusters"))
+# Separating predictors and outcome variable
+x_train <- model.matrix(~ . + 0, data = train_data[ , !names(train_data) %in% "hs_zbmi_who"])
+x_test <- model.matrix(~ . + 0, data = test_data[ , !names(test_data) %in% "hs_zbmi_who"])
+y_train <- train_data$hs_zbmi_who
+y_test <- test_data$hs_zbmi_who
 ```
 
-#### Random Forest
+## LASSO
 
-```{r}
-x_full_train[] <- lapply(x_full_train, function(x) if(is.character(x)) factor(x) else x)
-x_full_test[] <- lapply(x_full_test, function(x) if(is.character(x)) factor(x) else x)
+```{r lasso fit, warning = FALSE}
+fit_lasso <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+plot(fit_lasso, xvar = "lambda", main = "Coefficients Path")
+best_lambda <- fit_lasso$lambda.min
+coef(fit_lasso, s = best_lambda)
 
-rf_model <- randomForest(x_full_train, y_train, ntree=500, importance=TRUE)
+predictions_lasso <- predict(fit_lasso, s = "lambda.min", newx = x_test)
+mse_lasso <- mean((y_test - predictions_lasso)^2)
+rmse_lasso <- sqrt(mse_lasso)
 
-importance(rf_model)
-varImpPlot(rf_model)
+roc_lasso <- roc(y_test, predictions_lasso)
+auc_lasso <- auc(roc_lasso)
 
-# predict on the test set
-predictions_rf <- predict(rf_model, x_full_test)
+cat("Lasso Test MSE:", mse_lasso, "\n")
+cat("Lasso Test RMSE:", rmse_lasso, "\n")
+cat("Lasso Test AUC:", auc_lasso)
+plot(roc_lasso, main = "ROC Curve (Lasso)")
+```
 
+## Ridge
+
+```{r ridge fit, warning=FALSE}
+fit_ridge <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
+plot(fit_ridge, xvar = "lambda", main = "Coefficients Path")
+best_lambda <- fit_ridge$lambda.min
+coef(fit_ridge, s = best_lambda)
+
+predictions_ridge <- predict(fit_ridge, s = "lambda.min", newx = x_test)
+mse_ridge <- mean((y_test - predictions_ridge)^2)
+rmse_ridge <- sqrt(mse_ridge)
+
+roc_ridge <- roc(y_test, predictions_ridge)
+auc_ridge <- auc(roc_ridge)
+
+cat("Ridge Test MSE:", mse_ridge, "\n")
+cat("Ridge Test RMSE:", rmse_ridge, "\n")
+cat("Ridge Test AUC:", auc_ridge, "\n")
+plot(roc_ridge, main = "ROC Curve (Ridge)")
+```
+
+## Elastic Net
+
+```{r enet fit, warning = FALSE}
+fit_enet <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
+plot(fit_enet, xvar = "lambda", main = "Coefficients Path")
+best_lambda <- fit_enet$lambda.min
+coef(fit_enet, s = best_lambda)
+predictions_enet <- predict(fit_enet, s = "lambda.min", newx = x_test)
+mse_enet <- mean((y_test - predictions_enet)^2)
+rmse_enet <- sqrt(mse_enet)
+
+roc_enet <- roc(y_test, predictions_enet)
+auc_enet <- auc(roc_enet)
+
+cat("Elastic Net Test MSE:", mse_enet, "\n")
+cat("Elastic Net Test RMSE:", rmse_enet, "\n")
+cat("Elastic Net Test AUC:", auc_enet, "\n")
+plot(roc_enet, main = "ROC Curve (Elastic Net)")
+```
+
+## Random Forest
+
+```{r rf fit, warning=FALSE}
+rf_model <- randomForest(x_train, y_train, ntree=500, importance=TRUE)
+predictions_rf <- predict(rf_model, x_test)
 mse_rf <- mean((y_test - predictions_rf)^2)
+rmse_rf <- sqrt(mse_rf)
+
+roc_rf <- roc(y_test, predictions_rf)
+auc_rf <- auc(roc_rf)
+
 cat("Random Forest Test MSE:", mse_rf, "\n")
+cat("Random Forest Test RMSE:", rmse_rf, "\n")
+cat("Random Forest Test AUC:", auc_rf, "\n")
+plot(roc_rf, main = "ROC Curve (Random Forest)")
+varImpPlot(rf_model)
 ```
 
-#### GBM
+## GBM
 
-```{r}
-gbm_model <- gbm(y_train ~ ., data = x_full_train,
+```{r gbm fit, warning = FALSE}
+gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data, 
                  distribution = "gaussian",
                  n.trees = 1000,
                  interaction.depth = 3,
@@ -1012,13 +672,51 @@ gbm_model <- gbm(y_train ~ ., data = x_full_train,
                  cv.folds = 5,
                  verbose = TRUE)
 
-predictions_gbm <- predict(gbm_model, x_full_test, n.trees = 1000, type = "response")
-
+# finding the best number of trees based on cross-validation
+best_trees <- gbm.perf(gbm_model, method = "cv")
+predictions_gbm <- predict(gbm_model, test_data, n.trees = best_trees)
 mse_gbm <- mean((y_test - predictions_gbm)^2)
+rmse_gbm <- sqrt(mse_gbm)
+
+roc_gbm <- roc(y_test, predictions_gbm)
+auc_gbm <- auc(roc_gbm)
 
 cat("GBM Test MSE:", mse_gbm, "\n")
-
+cat("GBM Test RMSE:", rmse_gbm, "\n")
+cat("GBM Test AUC:", auc_gbm, "\n")
+plot(roc_gbm, main = "ROC Curve (GBM)")
 summary(gbm_model)
+```
+
+## Cross-Validation
+
+```{r cv of all models, warning=FALSE}
+profvis({
+  control <- trainControl(method = "cv", number = 5)
+
+  # lasso with cross-validation
+  fit_lasso_cv <- train(x_train, y_train, method = "glmnet", 
+                        trControl = control, tuneGrid = expand.grid(alpha = 1, lambda = fit_lasso$lambda.min))
+  print(fit_lasso_cv)
+  
+  # ridge with cross-validation
+  fit_ridge_cv <- train(x_train, y_train, method = "glmnet", 
+                        trControl = control, tuneGrid = expand.grid(alpha = 0, lambda = fit_ridge$lambda.min))
+  print(fit_ridge_cv)
+  
+  # enet with cross-validation
+  fit_enet_cv <- train(x_train, y_train, method = "glmnet", 
+                       trControl = control, tuneGrid = expand.grid(alpha = 0.5, lambda = fit_enet$lambda.min))
+  print(fit_enet_cv)
+  
+  # random forest with cross-validation
+  rf_cv <- train(x_train, y_train, method = "rf", trControl = control)
+  print(rf_cv)
+  
+  # GBM with cross-validation
+  gbm_cv <- train(hs_zbmi_who ~ ., data = train_data, method = "gbm", trControl = control, verbose = FALSE)
+  print(gbm_cv)
+})
 ```
 
 # With Metabolomic Serum Data
@@ -1065,89 +763,46 @@ outcome_and_cov <- outcome_and_cov[, !duplicated(colnames(outcome_and_cov))]
 outcome_and_cov <- outcome_and_cov %>%
   dplyr::select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, hs_zbmi_who)
 #the full chemicals list
-chemicals_full <- c(
-  "hs_as_c_Log2",
+chemicals_specific <- c(
   "hs_cd_c_Log2",
   "hs_co_c_Log2",
   "hs_cs_c_Log2",
   "hs_cu_c_Log2",
   "hs_hg_c_Log2",
-  "hs_mn_c_Log2",
   "hs_mo_c_Log2",
   "hs_pb_c_Log2",
-  "hs_tl_cdich_None",
   "hs_dde_cadj_Log2",
-  "hs_ddt_cadj_Log2",
-  "hs_hcb_cadj_Log2",
-  "hs_pcb118_cadj_Log2",
-  "hs_pcb138_cadj_Log2",
   "hs_pcb153_cadj_Log2",
   "hs_pcb170_cadj_Log2",
-  "hs_pcb180_cadj_Log2",
   "hs_dep_cadj_Log2",
-  "hs_detp_cadj_Log2",
-  "hs_dmdtp_cdich_None",
-  "hs_dmp_cadj_Log2",
-  "hs_dmtp_cadj_Log2",
   "hs_pbde153_cadj_Log2",
-  "hs_pbde47_cadj_Log2",
   "hs_pfhxs_c_Log2",
-  "hs_pfna_c_Log2",
   "hs_pfoa_c_Log2",
   "hs_pfos_c_Log2",
-  "hs_pfunda_c_Log2",
-  "hs_bpa_cadj_Log2",
-  "hs_bupa_cadj_Log2",
-  "hs_etpa_cadj_Log2",
-  "hs_mepa_cadj_Log2",
-  "hs_oxbe_cadj_Log2",
   "hs_prpa_cadj_Log2",
-  "hs_trcs_cadj_Log2",
   "hs_mbzp_cadj_Log2",
-  "hs_mecpp_cadj_Log2",
-  "hs_mehhp_cadj_Log2",
-  "hs_mehp_cadj_Log2",
-  "hs_meohp_cadj_Log2",
-  "hs_mep_cadj_Log2",
   "hs_mibp_cadj_Log2",
-  "hs_mnbp_cadj_Log2",
-  "hs_ohminp_cadj_Log2",
-  "hs_oxominp_cadj_Log2",
-  "FAS_cat_None",
-  "hs_contactfam_3cat_num_None",
-  "hs_hm_pers_None",
-  "hs_participation_3cat_None",
-  "hs_cotinine_cdich_None",
-  "hs_globalexp2_None",
-  "hs_smk_parents_None"
+  "hs_mnbp_cadj_Log2"
 )
 
 #postnatal diet for child
 postnatal_diet <- c(
   "h_bfdur_Ter",
   "hs_bakery_prod_Ter",
-  "hs_beverages_Ter",
-  "hs_break_cer_Ter",
-  "hs_caff_drink_Ter",
   "hs_dairy_Ter",
   "hs_fastfood_Ter",
-  "h_legume_preg_Ter",
   "hs_org_food_Ter",
-  "hs_proc_meat_Ter",
   "hs_readymade_Ter",
   "hs_total_bread_Ter",
-  "hs_total_cereal_Ter",
   "hs_total_fish_Ter",
   "hs_total_fruits_Ter",
   "hs_total_lipids_Ter",
-  "hs_total_meat_Ter",
   "hs_total_potatoes_Ter",
   "hs_total_sweets_Ter",
-  "hs_total_veg_Ter",
-  "hs_total_yog_Ter"
+  "hs_total_veg_Ter"
 )
 
-all_columns <- c(chemicals_full, postnatal_diet)
+all_columns <- c(chemicals_specific, postnatal_diet)
 extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
 
 selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
@@ -1155,13 +810,13 @@ selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
 # ID is the common identifier in both datasets
 combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
 head(combined_data)
+
+selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
 ```
 
 ## LASSO
 
 ```{r lasso predictions, warning=FALSE}
-selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
-
 #removing any NA, might be problematic but hard to impute completely
 selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
 
@@ -1181,10 +836,60 @@ lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
 plot(lasso_model)
 lasso_model$lambda.min
 coef(lasso_model, s = lasso_model$lambda.min)
-predictions <- predict(lasso_model, s = lasso_model$lambda.min, newx = x_test)
+lasso_predictions <- predict(lasso_model, s = lasso_model$lambda.min, newx = x_test)
 
-test_mse <- mean((predictions - y_test)^2)
+test_mse <- mean((lasso_predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
+```
+
+```{r lasso sensitivity-specificity}
+# convert hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+# fit LASSO model using cross-validation
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
+plot(lasso_model)
+
+best_lambda <- lasso_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+# Get coefficients at best lambda
+coef(lasso_model, s = best_lambda)
+
+lasso_predictions <- predict(lasso_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(lasso_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# evaluate accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("LASSO Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(lasso_predictions))
+plot(roc_curve, main = "ROC Curve for LASSO Model")
+auc_value <- auc(roc_curve)
+cat("LASSO AUC on Test Set:", auc_value, "\n")
 ```
 
 ## Ridge
@@ -1197,9 +902,9 @@ trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7
 train_data <- selected_metabolomics_data[ trainIndex,]
 test_data  <- selected_metabolomics_data[-trainIndex,]
 
-x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+x_train <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, train_data)[,-1]
 y_train <- train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+x_test <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, test_data)[,-1]
 y_test <- test_data$hs_zbmi_who
 
 ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
@@ -1212,6 +917,55 @@ test_mse <- mean((predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
 ```
 
+```{r ridge sensitivity-specificity, warning = FALSE}
+# convert hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+# fit ridge model using cross-validation
+ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "binomial")
+plot(ridge_model)
+
+best_lambda <- ridge_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+coef(ridge_model, s = best_lambda)
+
+ridge_predictions <- predict(ridge_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(ridge_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# accuracy accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("Ridge Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(ridge_predictions))
+plot(roc_curve, main = "ROC Curve for Ridge Model")
+auc_value <- auc(roc_curve)
+cat("Ridge AUC on Test Set:", auc_value, "\n")
+```
+
 ## Elastic
 
 ```{r elastic predictions}
@@ -1222,9 +976,9 @@ trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7
 train_data <- selected_metabolomics_data[ trainIndex,]
 test_data  <- selected_metabolomics_data[-trainIndex,]
 
-x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+x_train <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, train_data)[,-1]
 y_train <- train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+x_test <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, test_data)[,-1]
 y_test <- test_data$hs_zbmi_who
 
 enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
@@ -1237,11 +991,60 @@ test_mse <- mean((predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
 ```
 
+```{r enet sensitivity-specificity, warning = FALSE}
+# convert hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+# fit enet model using cross-validation
+enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "binomial")
+plot(enet_model)
+
+best_lambda <- enet_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+coef(enet_model, s = best_lambda)
+
+enet_predictions <- predict(enet_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(enet_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# accuracy accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("Ridge Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(enet_predictions))
+plot(roc_curve, main = "ROC Curve for Elastic Net Model")
+auc_value <- auc(roc_curve)
+cat("Elastic Net AUC on Test Set:", auc_value, "\n")
+```
+
 ## Random Forest
 
 ```{r rand forest predictions}
 set.seed(101)
-rf_model <- randomForest(hs_zbmi_who ~ ., data = train_data, ntree = 500)
+rf_model <- randomForest(hs_zbmi_who ~ . -hs_zbmi_who_binary, data = train_data, ntree = 500)
 
 rf_predictions <- predict(rf_model, newdata = test_data)
 
@@ -1252,11 +1055,61 @@ importance(rf_model)
 varImpPlot(rf_model)
 ```
 
+```{r ROC and AUC, warning = FALSE}
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(as.character(y_test)), as.numeric(as.character(rf_predictions)))
+plot(roc_curve, main = "ROC Curve for Random Forest Model")
+auc_value <- auc(roc_curve)
+cat("Random Forest AUC on Test Set:", auc_value, "\n")
+```
+
+```{r rf sensitivity-specificity , warning = FALSE}
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
+
+# hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+selected_metabolomics_data$hs_zbmi_who_binary <- factor(selected_metabolomics_data$hs_zbmi_who_binary, levels = c(0, 1), labels = c("0", "1"))
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . , train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . , test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+set.seed(101)
+rf_model <- randomForest(hs_zbmi_who_binary ~ . -hs_zbmi_who, data = train_data, ntree = 500)
+
+rf_predictions_prob <- predict(rf_model, newdata = test_data, type = "prob")[,2]
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+rf_mse <- mean((as.numeric(as.character(rf_predictions)) - as.numeric(as.character(y_test)))^2)
+cat("Random Forest Mean Squared Error on Test Set:", rf_mse, "\n")
+
+importance(rf_model)
+varImpPlot(rf_model)
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(as.character(y_test)), as.numeric(as.character(rf_predictions_prob)))
+plot(roc_curve, main = "ROC Curve for Random Forest Model")
+auc_value <- auc(roc_curve)
+cat("Random Forest AUC on Test Set:", auc_value, "\n")
+
+conf_matrix <- confusionMatrix(rf_predictions, y_test)
+print(conf_matrix)
+```
+
 ## GBM
 
-```{r gbm predictions}
+```{r gbm predictions, warning = FALSE}
 set.seed(101)
-gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data, 
+gbm_model <- gbm(hs_zbmi_who ~ . - hs_zbmi_who_binary, data = train_data, 
                  distribution = "gaussian",
                  n.trees = 1000,
                  interaction.depth = 3,
@@ -1277,66 +1130,54 @@ print(gbm_importance)
 
 ### With Metabolomics
 
-```{r group lasso, warning = FALSE}
-# combined data is clean and remove rows with NA values may have issues
-combined_data <- combined_data %>% na.omit()
+```{r group lasso metabol, warning = FALSE}
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
 
-#hs_zbmi_who to binary based on median?? is that going to mess it up?
-median_value <- median(combined_data$hs_zbmi_who, na.rm = TRUE)
-combined_data$hs_zbmi_who_binary <- ifelse(combined_data$hs_zbmi_who > median_value, 1, 0)
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
 
 set.seed(101)
-trainIndex <- createDataPartition(combined_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
-train_data <- combined_data[trainIndex,]
-test_data  <- combined_data[-trainIndex,]
+trainIndex <- caret::createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data <- selected_metabolomics_data[-trainIndex,]
 
-# clean rows with NAs in any predictors from train_data—may be problematic
 train_data_clean <- train_data[complete.cases(train_data), ]
-x_train <- model.matrix(hs_zbmi_who_binary ~ . - ID, data = train_data_clean)[,-1]
-y_train <- as.numeric(train_data_clean$hs_zbmi_who_binary)
-
 test_data_clean <- test_data[complete.cases(test_data), ]
 
-x_test <- model.matrix(hs_zbmi_who_binary ~ . - ID, data = test_data_clean)[,-1]
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, data = train_data_clean)[, -1]
+y_train <- as.numeric(train_data_clean$hs_zbmi_who_binary)
+
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, data = test_data_clean)[, -1]
 y_test <- as.numeric(test_data_clean$hs_zbmi_who_binary)
 
-# make sure dimensions match
-#dim(x_train): 840 295
-#length(y_train): 840
-#dim(x_test): 358 295
-#length(y_test): 358
-
-num_chemicals <- length(chemicals_full)
-num_diet <- length(postnatal_diet)
+num_chemicals <- length(chemicals_selected)
+num_diet <- length(diet_selected)
 num_metabolomics <- ncol(metabol_serum_transposed) - 1  # Excluding ID
-num_covariates <- ncol(outcome_and_cov) - 2  # Excluding ID and outcome
+num_covariates <- ncol(outcome_and_cov) - 3  # Excluding ID and outcome
 
-# combine all the lengths
+# Combine all the lengths
 total_length <- num_chemicals + num_diet + num_metabolomics + num_covariates
+cat("Total length of predictors:", total_length, "\n")
+cat("Number of predictors in x_train:", ncol(x_train), "\n")
 
-# define groups
 group_indices <- c(
   rep(1, num_chemicals),  # Group 1: Chemicals
-  rep(2, num_diet),  # Group 2: Postnatal diet
+  rep(2, num_diet),       # Group 2: Postnatal diet
   rep(3, num_metabolomics), # Group 3: Metabolomics (excluding ID)
   rep(4, num_covariates)  # Group 4: Covariates (excluding ID and outcome)
 )
 
-# make sure length of group_indices matches x_train
-length(group_indices) == ncol(x_train)
-
-# adjust length if necessary
 if (length(group_indices) < ncol(x_train)) {
   group_indices <- c(group_indices, rep(5, ncol(x_train) - length(group_indices)))
+} else if (length(group_indices) > ncol(x_train)) {
+  group_indices <- group_indices[1:ncol(x_train)]
 }
 
-# making sure length of group_indices matches the number of columns in x_train
-length(group_indices) == ncol(x_train)
+cat("Length of group_indices:", length(group_indices), "\n")
+cat("Number of columns in x_train:", ncol(x_train), "\n")
 
-# fit the Group LASSO model for logistic regression
 group_lasso_model <- grplasso(x_train, y_train, index = group_indices, lambda = 0.1, model = LogReg())
-group_lasso_coef <- coef(group_lasso_model)
-print(group_lasso_coef)
+coef(group_lasso_model)
 
 group_lasso_predictions <- predict(group_lasso_model, newdata = x_test, type = "response")
 # convert probabilities to binary predictions
@@ -1350,23 +1191,23 @@ conf_matrix
 
 # ROC Curve and AUC
 roc_curve <- roc(y_test, group_lasso_predictions)
-plot(roc_curve, main = "ROC Curve for Group LASSO Model (without metabolomics)")
+plot(roc_curve, main = "ROC Curve for Group LASSO Model (with metabolomics)")
 auc_value <- auc(roc_curve)
-cat("Group LASSO AUC on Test Set:", auc_value, "\n")
+cat("Group LASSO AUC on Test Set:", auc_value)
 ```
 
 ### Without Metabolomics
 
-```{r}
-selected_data <- selected_data %>% na.omit()
+```{r group lasso without metabol, warning=FALSE}
+finalized_data <- finalized_data %>% na.omit()
 
-median_value <- median(selected_data$hs_zbmi_who, na.rm = TRUE)
-selected_data$hs_zbmi_who_binary <- ifelse(selected_data$hs_zbmi_who > median_value, 1, 0)
+median_value <- median(finalized_data$hs_zbmi_who, na.rm = TRUE)
+finalized_data$hs_zbmi_who_binary <- ifelse(finalized_data$hs_zbmi_who > median_value, 1, 0)
 
 set.seed(101)
-trainIndex <- createDataPartition(selected_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
-train_data <- selected_data[trainIndex,]
-test_data  <- selected_data[-trainIndex,]
+trainIndex <- createDataPartition(finalized_data$hs_zbmi_who_binary, p = .7, list = FALSE, times = 1)
+train_data <- finalized_data[trainIndex,]
+test_data  <- finalized_data[-trainIndex,]
 
 train_data_clean <- train_data[complete.cases(train_data), ]
 
@@ -1378,8 +1219,8 @@ test_data_clean <- test_data[complete.cases(test_data), ]
 x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, data = test_data_clean)[,-1]
 y_test <- as.numeric(test_data_clean$hs_zbmi_who_binary)
 
-num_chemicals <- length(chemicals_full)
-num_diet <- length(postnatal_diet)
+num_chemicals <- length(chemicals_selected)
+num_diet <- length(diet_selected)
 num_covariates <- ncol(outcome_and_cov) - 2  # excluding outcome and binary outcome
 
 total_length <- num_chemicals + num_diet + num_covariates
@@ -1392,7 +1233,7 @@ group_indices <- c(
 
 length(group_indices) == ncol(x_train)
 
-# Adjust length if necessary
+# adjust length if necessary
 if (length(group_indices) < ncol(x_train)) {
     group_indices <- c(group_indices, rep(4, ncol(x_train) - length(group_indices)))
 }
