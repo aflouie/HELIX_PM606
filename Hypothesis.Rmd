@@ -24,7 +24,8 @@ library(table1)
 library(tableone)
 library(randomForest)
 library(caret)
-library(nnet)
+library(rpart)
+library(rpart.plot)
 library(gbm)
 library(grpreg)
 library(glmnet)
@@ -59,7 +60,7 @@ These studies collectively illustrate the critical role of environmental EDCs in
 
 # Data Description
 
-This study will utilize data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy  and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
+This study will utilize data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
 
 ```{r load data and codebook, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
@@ -69,7 +70,7 @@ filtered_chem_diet <- codebook %>%
 # specific covariates
 filtered_covariates <- codebook %>%
   filter(domain == "Covariates" & 
-         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None"))
 
 #specific phenotype variables
 filtered_phenotype <- codebook %>%
@@ -253,26 +254,8 @@ MEP (Mono-ethyl phthalate): The distribution is right-skewed, similar to others,
 
 ```{r chemical corr, warning=FALSE}
 numeric_chemical <- select_if(chemical_exposome, is.numeric)
-cor_matrix <- cor(numeric_chemical, method = "pearson")
-cor_matrix <- cor(numeric_chemical, method = "spearman")
-custom_color_scale <- list(
-  c(0, "darkred"),    
-  c(0.5, "white"), 
-  c(1, "darkblue")
-)
-
-plot_ly(
-  z = cor_matrix, 
-  x = colnames(cor_matrix), 
-  y = colnames(cor_matrix), 
-  type = "heatmap",
-  colorscale = custom_color_scale
-) %>%
-layout(
-  title = "Correlation Matrix",
-  xaxis = list(tickangle = -90),
-  yaxis = list(side = "left")
-)
+cor_matrix <- cor(numeric_chemical, use = "complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 90, tl.cex = 0.6)
 ```
 
 ### Data Summary Covariates
@@ -281,8 +264,7 @@ layout(
 # Specified covariates
 specific_covariates <- c(
   "e3_sex_None", 
-  "e3_yearbir_None", 
-  "h_edumc_None", 
+  "e3_yearbir_None",
   "h_cohort", 
   "hs_child_age_None"
 )
@@ -347,8 +329,6 @@ Gender Distribution (e3_sex): The gender distribution is nearly balanced with a 
 
 Year of Birth (e3_yearbir): This chart shows that the majority of subjects were born in the later years, with a significant increase in 2009, indicating perhaps a larger recruitment or a specific cohort focus that year.
 
-Educational Level (h_educmc): Represents three categories of educational attainment, with category 3 having the highest count, suggesting a higher level of education among the majority of the subjects.
-
 ### Data Summary Outcome: Phenotype
 
 ```{r phenotype summary}
@@ -378,7 +358,7 @@ render_cat <- function(x) {
 
 # Define the formula for table1
 table1_formula <- ~ 
-  hs_child_age_None + e3_yearbir_None + h_edumc_None + h_cohort +
+  hs_child_age_None + e3_yearbir_None + h_cohort +
   hs_zbmi_who +
   h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
   hs_proc_meat_Ter +
@@ -404,7 +384,7 @@ table1(
 combined_data$h_cohort <- as.factor(combined_data$h_cohort)
 # Create the table
 table1(
-  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None + h_edumc_None +
+  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None +
     hs_zbmi_who + h_bfdur_Ter + hs_bakery_prod_Ter +
     hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter +
     hs_org_food_Ter + hs_proc_meat_Ter + hs_total_fish_Ter + hs_total_fruits_Ter +
@@ -423,29 +403,9 @@ table1(
 )
 ```
 
-```{r descriptive table 2, warning=FALSE}
-combined_data$h_edumc_None <- as.factor(combined_data$h_edumc_None)
-table1(
-  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None + hs_zbmi_who +
-    h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
-    hs_proc_meat_Ter +
-    hs_total_fish_Ter + hs_total_fruits_Ter + hs_total_lipids_Ter + hs_total_sweets_Ter + 
-    hs_total_veg_Ter + hs_cd_c_Log2 + hs_co_c_Log2 + 
-    hs_cs_c_Log2 + hs_cu_c_Log2 + hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 +
-    hs_pcb153_cadj_Log2 + hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 +
-    hs_pbde153_cadj_Log2 + hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + 
-    hs_prpa_cadj_Log2 + hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | h_edumc_None,
-  data = combined_data,
-  render.continuous = render_cont,
-  render.categorical = render_cat,
-  overall = TRUE,
-  topclass = "Rtable1-shade"
-)
-```
+# All Interested Data
 
-## All Interested Data
-
-```{r, warning=FALSE}
+```{r interested data, warning=FALSE}
 outcome_cov <- cbind(covariate_data, outcome_BMI)
 outcome_cov <- outcome_cov[, !duplicated(colnames(outcome_cov))]
 #the full chemicals list
@@ -546,24 +506,8 @@ head(interested_data)
 interested_data_corr <- select_if(interested_data, is.numeric)
 cor_matrix <- cor(interested_data_corr, method = "pearson")
 cor_matrix <- cor(interested_data_corr, method = "spearman")
-custom_color_scale <- list(
-  c(0, "darkred"),    
-  c(0.5, "white"), 
-  c(1, "darkblue")
-)
-
-plot_ly(
-  z = cor_matrix, 
-  x = colnames(cor_matrix), 
-  y = colnames(cor_matrix), 
-  type = "heatmap",
-  colorscale = custom_color_scale
-) %>%
-layout(
-  title = "Correlation Matrix",
-  xaxis = list(tickangle = -90),
-  yaxis = list(side = "left")
-)
+cor_matrix <- cor(interested_data_corr, use = "complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 90, tl.cex = 0.4)
 ```
 
 ## Comparing Models with and without Covariates
@@ -572,7 +516,7 @@ layout(
 
 #### Predicting LASSO
 
-```{r, warning=FALSE}
+```{r chem lasso, warning=FALSE}
 #LASSO train/test 70-30
 set.seed(101)
 train_indices <- sample(seq_len(nrow(chemicals_outcome_cov)), size = floor(0.7 * nrow(interested_data)))
@@ -601,7 +545,7 @@ cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 
 #### Predicting Ridge
 
-```{r, warning=FALSE}
+```{r chem ridge, warning=FALSE}
 # RIDGE
 fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0, family = "gaussian")
 fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
@@ -617,7 +561,7 @@ cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 
 #### Predicting Elastic Net
 
-```{r, warning=FALSE}
+```{r enet, warning=FALSE}
 # ELASTIC NET
 fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
 fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
@@ -630,6 +574,35 @@ coef(fit_without_covariates_train, s = best_lambda)
 
 cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
 ```
+
+```{r selected chemicals, warning=FALSE}
+#selected chemicals that were noted in enet
+chemicals_selected <- c(
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_dde_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_detp_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_mepa_cadj_Log2",
+  "hs_oxbe_cadj_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2")
+```
+
+The features for chemicals were selected due to the feature selections of elastic net.
 
 ### Postnatal Diet Data
 
@@ -645,7 +618,7 @@ diet_data <- diet_outcome_cov[, postnatal_diet]
 x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])  
 x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])  
 
-covariates <- diet_outcome_cov[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+covariates <- diet_outcome_cov[, c("e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None")]
 x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ]) 
 x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
 
@@ -728,7 +701,7 @@ chemical_data <- interested_data[, chemicals_full]
 x_chemical_train <- as.matrix(chemical_data[train_indices, ])
 x_chemical_test <- as.matrix(chemical_data[test_indices, ])
 
-covariates <- interested_data[, c("e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None")]
+covariates <- interested_data[, c("e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None")]
 x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ])
 x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
 
@@ -797,9 +770,9 @@ cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
 
 Selected data based on the enet features without covariates.
 
-Still trying to decide if to stick with continuous or dichotomous outcome (for sensitivity/specificity).  Will try to freeze the covariates in the lasso, ridge, or enet.
+Still trying to decide if to stick with continuous or dichotomous outcome (for sensitivity/specificity). Froze the covariates in lasso, ridge and enet to avoid shrinkage.
 
-```{r selected chemicals, warning=FALSE}
+```{r selected data chemicals, warning=FALSE}
 #selected chemicals that were noted in enet
 chemicals_selected <- c(
   "hs_cd_c_Log2",
@@ -826,7 +799,7 @@ chemicals_selected <- c(
   "hs_mnbp_cadj_Log2")
 ```
 
-```{r selected diet, warning=FALSE}
+```{r selected data diet, warning=FALSE}
 #selected diets that were noted in enet
 diet_selected <- c(
   "h_bfdur_Ter",
@@ -891,11 +864,25 @@ head(finalized_data)
 ```
 
 ```{r corr plot, warning = FALSE}
-numeric_vars <- finalized_data %>%
+numeric_finalized <- finalized_data %>%
   dplyr::select(where(is.numeric))
 
-cor_matrix <- cor(numeric_vars, use = "complete.obs")
-corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = 0.8)
+cor_matrix <- cor(numeric_finalized, use = "complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 90, tl.cex = 0.6)
+```
+
+```{r}
+find_highly_correlated <- function(cor_matrix, threshold = 0.8) {
+  cor_matrix[lower.tri(cor_matrix, diag = TRUE)] <- NA  
+  cor_matrix <- as.data.frame(as.table(cor_matrix)) 
+  cor_matrix <- na.omit(cor_matrix)  
+  cor_matrix <- cor_matrix[order(-abs(cor_matrix$Freq)), ]  
+  cor_matrix <- cor_matrix %>% filter(abs(Freq) > threshold)  
+  return(cor_matrix)
+}
+
+highly_correlated_pairs <- find_highly_correlated(cor_matrix, threshold = 0.50)
+highly_correlated_pairs
 ```
 
 ```{r train-test, warning=FALSE}
@@ -914,12 +901,18 @@ x_train <- model.matrix(~ . + 0, data = train_data[ , !names(train_data) %in% "h
 x_test <- model.matrix(~ . + 0, data = test_data[ , !names(test_data) %in% "hs_zbmi_who"])
 y_train <- train_data$hs_zbmi_who
 y_test <- test_data$hs_zbmi_who
+
+covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+
+#to freeze the covariates and make sure they are not shrinked
+penalty_factors <- rep(1, ncol(x_train))
+penalty_factors[colnames(x_train) %in% covariates_selected] <- 0
 ```
 
 ## LASSO
 
 ```{r lasso fit, warning = FALSE}
-fit_lasso <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+fit_lasso <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian", penalty.factor = penalty_factors)
 plot(fit_lasso, xvar = "lambda", main = "Coefficients Path")
 best_lambda <- fit_lasso$lambda.min
 coef(fit_lasso, s = best_lambda)
@@ -928,19 +921,16 @@ predictions_lasso <- predict(fit_lasso, s = "lambda.min", newx = x_test)
 mse_lasso <- mean((y_test - predictions_lasso)^2)
 rmse_lasso <- sqrt(mse_lasso)
 
-roc_lasso <- roc(y_test, predictions_lasso)
-auc_lasso <- auc(roc_lasso)
-
 cat("Lasso Test MSE:", mse_lasso, "\n")
 cat("Lasso Test RMSE:", rmse_lasso, "\n")
-cat("Lasso Test AUC:", auc_lasso)
-plot(roc_lasso, main = "ROC Curve (Lasso)")
 ```
+
+Without the metabolomics data, it performs worse than the tree-based methods but slightly better than the decision tree model. The MSE indicates that it may not be capturing all the important predictors effectively.
 
 ## Ridge
 
 ```{r ridge fit, warning=FALSE}
-fit_ridge <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
+fit_ridge <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian", penalty.factor = penalty_factors)
 plot(fit_ridge, xvar = "lambda", main = "Coefficients Path")
 best_lambda <- fit_ridge$lambda.min
 coef(fit_ridge, s = best_lambda)
@@ -949,19 +939,16 @@ predictions_ridge <- predict(fit_ridge, s = "lambda.min", newx = x_test)
 mse_ridge <- mean((y_test - predictions_ridge)^2)
 rmse_ridge <- sqrt(mse_ridge)
 
-roc_ridge <- roc(y_test, predictions_ridge)
-auc_ridge <- auc(roc_ridge)
-
 cat("Ridge Test MSE:", mse_ridge, "\n")
 cat("Ridge Test RMSE:", rmse_ridge, "\n")
-cat("Ridge Test AUC:", auc_ridge, "\n")
-plot(roc_ridge, main = "ROC Curve (Ridge)")
 ```
+
+It performs similarly to Lasso regression but slightly worse in terms of MSE. This indicates that both methods are somewhat comparable in this context.
 
 ## Elastic Net
 
 ```{r enet fit, warning = FALSE}
-fit_enet <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
+fit_enet <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian", penalty.factor = penalty_factors)
 plot(fit_enet, xvar = "lambda", main = "Coefficients Path")
 best_lambda <- fit_enet$lambda.min
 coef(fit_enet, s = best_lambda)
@@ -969,14 +956,24 @@ predictions_enet <- predict(fit_enet, s = "lambda.min", newx = x_test)
 mse_enet <- mean((y_test - predictions_enet)^2)
 rmse_enet <- sqrt(mse_enet)
 
-roc_enet <- roc(y_test, predictions_enet)
-auc_enet <- auc(roc_enet)
-
 cat("Elastic Net Test MSE:", mse_enet, "\n")
 cat("Elastic Net Test RMSE:", rmse_enet, "\n")
-cat("Elastic Net Test AUC:", auc_enet, "\n")
-plot(roc_enet, main = "ROC Curve (Elastic Net)")
 ```
+
+Its performance is very close to Lasso regression, indicating that the combination of penalties did not provide a significant advantage without the metabolomics data.
+
+## Decision Trees
+
+```{r}
+set.seed(101)
+fit_tree_model <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
+rpart.plot(fit_tree_model)
+fit_tree_predictions <- predict(fit_tree_model, newdata = test_data)
+fit_tree_mse <- mean((fit_tree_predictions - y_test)^2)
+cat("Decision Tree Mean Squared Error on Test Set:", fit_tree_mse, "\n")
+```
+
+Decision tree model shows a high MSE indicating poor prediction accuracy. Decision trees tend to overfit the training data and may not generalize well to unseen data.
 
 ## Random Forest
 
@@ -986,15 +983,14 @@ predictions_rf <- predict(rf_model, x_test)
 mse_rf <- mean((y_test - predictions_rf)^2)
 rmse_rf <- sqrt(mse_rf)
 
-roc_rf <- roc(y_test, predictions_rf)
-auc_rf <- auc(roc_rf)
-
 cat("Random Forest Test MSE:", mse_rf, "\n")
 cat("Random Forest Test RMSE:", rmse_rf, "\n")
-cat("Random Forest Test AUC:", auc_rf, "\n")
-plot(roc_rf, main = "ROC Curve (Random Forest)")
+
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)
 varImpPlot(rf_model)
 ```
+
+Random forest improves over the decision tree model by aggregating multiple trees to reduce overfitting and improve prediction accuracy. It shows a lower MSE, indicating better performance and robustness.
 
 ## GBM
 
@@ -1014,57 +1010,55 @@ predictions_gbm <- predict(gbm_model, test_data, n.trees = best_trees)
 mse_gbm <- mean((y_test - predictions_gbm)^2)
 rmse_gbm <- sqrt(mse_gbm)
 
-roc_gbm <- roc(y_test, predictions_gbm)
-auc_gbm <- auc(roc_gbm)
-
 cat("GBM Test MSE:", mse_gbm, "\n")
 cat("GBM Test RMSE:", rmse_gbm, "\n")
-cat("GBM Test AUC:", auc_gbm, "\n")
-plot(roc_gbm, main = "ROC Curve (GBM)")
 summary(gbm_model)
 ```
+
+GBM performs better than both decision tree and random forest models. It iteratively improves the model by focusing on the errors of previous trees, leading to better prediction accuracy and lower MSE.
 
 ## Cross-Validation
 
 ```{r cv of all models, warning=FALSE}
-profvis({
-  control <- trainControl(method = "cv", number = 5)
+control <- trainControl(method = "cv", number = 5)
 
-  # lasso with cross-validation
-  fit_lasso_cv <- train(x_train, y_train, method = "glmnet", 
-                        trControl = control, tuneGrid = expand.grid(alpha = 1, lambda = fit_lasso$lambda.min))
-  print(fit_lasso_cv)
+# lasso with cross-validation
+fit_lasso_cv <- train(x_train, y_train, method = "glmnet", trControl = control, tuneGrid = expand.grid(alpha = 1, lambda = fit_lasso$lambda.min), penalty.factor = penalty_factors)
+print(fit_lasso_cv)
   
-  # ridge with cross-validation
-  fit_ridge_cv <- train(x_train, y_train, method = "glmnet", 
-                        trControl = control, tuneGrid = expand.grid(alpha = 0, lambda = fit_ridge$lambda.min))
-  print(fit_ridge_cv)
+# ridge with cross-validation
+fit_ridge_cv <- train(x_train, y_train, method = "glmnet", trControl = control, tuneGrid = expand.grid(alpha = 0, lambda = fit_ridge$lambda.min), penalty.factor = penalty_factors)
+print(fit_ridge_cv)
   
-  # enet with cross-validation
-  fit_enet_cv <- train(x_train, y_train, method = "glmnet", 
-                       trControl = control, tuneGrid = expand.grid(alpha = 0.5, lambda = fit_enet$lambda.min))
-  print(fit_enet_cv)
+# enet with cross-validation
+fit_enet_cv <- train(x_train, y_train, method = "glmnet", trControl = control, tuneGrid = expand.grid(alpha = 0.5, lambda = fit_enet$lambda.min), penalty.factor = penalty_factors)
+print(fit_enet_cv)
+
+# decision tree with cross-validation
+fit_tree_cv <- train(hs_zbmi_who ~ ., data = train_data, method = "rpart", trControl = control, tuneLength = 10)
+print(fit_tree_cv)
+
+rpart.plot(fit_tree_cv$finalModel)
+
+fit_tree_predictions <- predict(fit_tree_cv, newdata = test_data)
+fit_tree_mse <- mean((fit_tree_predictions - y_test)^2)
+cat("Decision Tree Mean Squared Error on Test Set:", fit_tree_mse, "\n")
+
+# random forest with cross-validation
+rf_cv <- train(x_train, y_train, method = "rf", trControl = control)
+print(rf_cv)
   
-  # random forest with cross-validation
-  rf_cv <- train(x_train, y_train, method = "rf", trControl = control)
-  print(rf_cv)
-  
-  # GBM with cross-validation
-  gbm_cv <- train(hs_zbmi_who ~ ., data = train_data, method = "gbm", trControl = control, verbose = FALSE)
-  print(gbm_cv)
-})
+# GBM with cross-validation
+gbm_cv <- train(hs_zbmi_who ~ ., data = train_data, method = "gbm", trControl = control, verbose = FALSE)
+print(gbm_cv)
 ```
 
 # With Metabolomic Serum Data
 
 First 10 rows and columns of the metabolomic serum data
 
-```{r metabolomic serum data, echo=TRUE}
+```{r transposed serum data, warning = FALSE, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
-kable(metabol_serum.d[1:10,1:10], align="c", digits=2, format="pipe")
-```
-
-```{r transposed serum data, warning = FALSE}
 metabol_serum_transposed <- as.data.frame(t(metabol_serum.d))
 metabol_serum_transposed$ID <- as.integer(rownames(metabol_serum_transposed))
 
@@ -1084,7 +1078,7 @@ filtered_chem_diet <- codebook %>%
 # specific covariates
 filtered_covariates <- codebook %>%
   filter(domain == "Covariates" & 
-         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_edumc_None", "h_cohort", "hs_child_age_None"))
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None"))
 
 #specific phenotype variables
 filtered_phenotype <- codebook %>%
@@ -1097,7 +1091,7 @@ combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered
 outcome_and_cov <- cbind(covariates, outcome_BMI)
 outcome_and_cov <- outcome_and_cov[, !duplicated(colnames(outcome_and_cov))]
 outcome_and_cov <- outcome_and_cov %>%
-  dplyr::select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, h_edumc_None, h_native_None, hs_zbmi_who)
+  dplyr::select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, hs_zbmi_who)
 #the full chemicals list
 chemicals_specific <- c(
   "hs_cd_c_Log2",
@@ -1138,21 +1132,23 @@ postnatal_diet <- c(
   "hs_total_veg_Ter"
 )
 
+covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+
 all_columns <- c(chemicals_specific, postnatal_diet)
 extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
 
 selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
-
-# ID is the common identifier in both datasets
-combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
-head(combined_data)
-
-selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
 ```
 
-## LASSO
+```{r}
+# ID is the common identifier in both datasets
+combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
 
-```{r lasso predictions, warning=FALSE}
+selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
+head(selected_metabolomics_data)
+```
+
+```{r predictions, warning=FALSE}
 #removing any NA, might be problematic but hard to impute completely
 selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
 
@@ -1168,7 +1164,15 @@ y_train <- train_data$hs_zbmi_who
 x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
 y_test <- test_data$hs_zbmi_who
 
-lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+#to freeze the covariates and make sure they are not shrinked
+penalty_factors <- rep(1, ncol(x_train))
+penalty_factors[colnames(x_train) %in% covariates_selected] <- 0
+```
+
+## LASSO
+
+```{r lasso predictions, warning=FALSE}
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian", penalty.factor = penalty_factors)
 plot(lasso_model)
 lasso_model$lambda.min
 coef(lasso_model, s = lasso_model$lambda.min)
@@ -1178,72 +1182,53 @@ test_mse <- mean((lasso_predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
 ```
 
-```{r lasso sensitivity-specificity}
-# convert hs_zbmi_who to binary based on median
-median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
-selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+The optimal value of the regularization parameter selected by cross-validation is approximately 0.0067. The Mean Squared Error (MSE) on the test set was calculated as 0.742, which seems to be quite high to predict better performance.
 
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
+To assess the robustness of the model, 10-fold cross-validation was performed.
 
-x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
-y_train <- train_data$hs_zbmi_who_binary
-x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
-y_test <- test_data$hs_zbmi_who_binary
+```{r cv k-fold LASSO, warning = FALSE}
+perform_cv <- function(data, response, k = 10) {
+  # make k-folds
+  folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+  
+  mse_values <- c()
+  
+  for (i in 1:k) {
+    train_indices <- folds[[i]]
+    train_data <- data[train_indices, ]
+    test_data <- data[-train_indices, ]
+    
+    x_train <- model.matrix(as.formula(paste(response, "~ .")), train_data)[, -1]
+    y_train <- train_data[[response]]
+    x_test <- model.matrix(as.formula(paste(response, "~ .")), test_data)[, -1]
+    y_test <- test_data[[response]]
+    
+    # add LASSO with cv.glmnet
+    lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian", penalty.factor = penalty_factors)
+    
+    lasso_predictions <- predict(lasso_model, s = lasso_model$lambda.min, newx = x_test)
+    
+    mse <- mean((lasso_predictions - y_test)^2)
+    mse_values <- c(mse_values, mse)
+  }
+  
+  return(mse_values)
+}
 
-# fit LASSO model using cross-validation
-lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
-plot(lasso_model)
+cv_mse_values <- perform_cv(selected_metabolomics_data, "hs_zbmi_who", k = 10)
 
-best_lambda <- lasso_model$lambda.min
-cat("Best Lambda:", best_lambda, "\n")
-
-# Get coefficients at best lambda
-coef(lasso_model, s = best_lambda)
-
-lasso_predictions <- predict(lasso_model, s = best_lambda, newx = x_test, type = "response")
-
-# convert probabilities to binary predictions
-binary_predictions <- ifelse(lasso_predictions > 0.5, 1, 0)
-
-# make sure levels match between binary_predictions and y_test
-binary_predictions <- factor(binary_predictions, levels = c(0, 1))
-y_test <- factor(y_test, levels = c(0, 1))
-
-# evaluate accuracy
-accuracy <- mean(binary_predictions == y_test)
-cat("LASSO Accuracy on Test Set:", accuracy, "\n")
-
-conf_matrix <- confusionMatrix(binary_predictions, y_test)
-conf_matrix
-
-# ROC Curve and AUC
-roc_curve <- roc(as.numeric(y_test), as.numeric(lasso_predictions))
-plot(roc_curve, main = "ROC Curve for LASSO Model")
-auc_value <- auc(roc_curve)
-cat("LASSO AUC on Test Set:", auc_value, "\n")
+# cross-validation results
+cat("Cross-Validation Mean Squared Errors:", cv_mse_values, "\n")
+cat("Mean MSE:", mean(cv_mse_values), "\n")
+cat("Standard Deviation of MSE:", sd(cv_mse_values), "\n")
 ```
+
+The average MSE across the folds was 0.684, with a standard deviation of 0.06. These values indicate that the model performs consistently across different subsets of the data, as evidenced by the relatively low standard deviation of the MSE. The average MSE of approximately 0.68 suggests that the model has reasonable predictive accuracy.
 
 ## Ridge
 
 ```{r ridge predictions}
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[ trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
-
-x_train <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, train_data)[,-1]
-y_train <- train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, test_data)[,-1]
-y_test <- test_data$hs_zbmi_who
-
-ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian")
+ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian", penalty.factor = penalty_factors)
 plot(ridge_model)
 ridge_model$lambda.min
 coef(ridge_model, s = ridge_model$lambda.min)
@@ -1253,71 +1238,55 @@ test_mse <- mean((predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
 ```
 
-```{r ridge sensitivity-specificity, warning = FALSE}
-# convert hs_zbmi_who to binary based on median
-median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
-selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+The optimal value of the regularization parameter (lambda.min) selected by cross-validation is approximately 0.148.
 
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
+The test set MSE is quite similar to LASSO, with Ridge performing slightly better.
 
-x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
-y_train <- train_data$hs_zbmi_who_binary
-x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
-y_test <- test_data$hs_zbmi_who_binary
+```{r cv k-fold ridge, warning = FALSE}
+perform_cv <- function(data, response, k = 10) {
+  # make k-folds
+  folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+  
+  mse_values <- c()
+  
+  for (i in 1:k) {
+    train_indices <- folds[[i]]
+    train_data <- data[train_indices, ]
+    test_data <- data[-train_indices, ]
+    
+    x_train <- model.matrix(as.formula(paste(response, "~ .")), train_data)[, -1]
+    y_train <- train_data[[response]]
+    x_test <- model.matrix(as.formula(paste(response, "~ .")), test_data)[, -1]
+    y_test <- test_data[[response]]
+    
+    # add ridge with cv.glmnet
+    ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "gaussian", penalty.factor = penalty_factors)
+    
+    ridge_predictions <- predict(ridge_model, s = ridge_model$lambda.min, newx = x_test)
+    
+    mse <- mean((ridge_predictions - y_test)^2)
+    mse_values <- c(mse_values, mse)
+  }
+  
+  return(mse_values)
+}
 
-# fit ridge model using cross-validation
-ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "binomial")
-plot(ridge_model)
+cv_mse_values <- perform_cv(selected_metabolomics_data, "hs_zbmi_who", k = 10)
 
-best_lambda <- ridge_model$lambda.min
-cat("Best Lambda:", best_lambda, "\n")
-
-coef(ridge_model, s = best_lambda)
-
-ridge_predictions <- predict(ridge_model, s = best_lambda, newx = x_test, type = "response")
-
-# convert probabilities to binary predictions
-binary_predictions <- ifelse(ridge_predictions > 0.5, 1, 0)
-
-# make sure levels match between binary_predictions and y_test
-binary_predictions <- factor(binary_predictions, levels = c(0, 1))
-y_test <- factor(y_test, levels = c(0, 1))
-
-# accuracy accuracy
-accuracy <- mean(binary_predictions == y_test)
-cat("Ridge Accuracy on Test Set:", accuracy, "\n")
-
-conf_matrix <- confusionMatrix(binary_predictions, y_test)
-conf_matrix
-
-# ROC Curve and AUC
-roc_curve <- roc(as.numeric(y_test), as.numeric(ridge_predictions))
-plot(roc_curve, main = "ROC Curve for Ridge Model")
-auc_value <- auc(roc_curve)
-cat("Ridge AUC on Test Set:", auc_value, "\n")
+# cross-validation results
+cat("Cross-Validation Mean Squared Errors:", cv_mse_values, "\n")
+cat("Mean MSE:", mean(cv_mse_values), "\n")
+cat("Standard Deviation of MSE:", sd(cv_mse_values), "\n")
 ```
+
+The ridge regression model's test set MSE of `0.7391414` is slightly higher than the mean MSE from cross-validation (`0.7000391`), suggesting that the model generalizes reasonably well to new data. The standard deviation of `0.1045169` indicates moderate variability in model performance across different subsets of the data. This suggests that the model is relatively stable but has some sensitivity to the specific data used for training and testing.
+
+Compared to the LASSO model, which had a test set MSE of `0.7417664` and a cross-validation mean MSE of `0.6835527`, the ridge regression model has a slightly lower test set MSE and a higher mean MSE from cross-validation. This suggests that while both models perform similarly, the ridge regression model might handle multicollinearity better due to its nature of penalizing all coefficients equally.
 
 ## Elastic
 
 ```{r elastic predictions}
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[ trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
-
-x_train <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, train_data)[,-1]
-y_train <- train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ . - hs_zbmi_who_binary, test_data)[,-1]
-y_test <- test_data$hs_zbmi_who
-
-enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian")
+enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian", penalty.factor = penalty_factors)
 plot(enet_model)
 enet_model$lambda.min
 coef(enet_model, s = enet_model$lambda.min)
@@ -1327,60 +1296,102 @@ test_mse <- mean((predictions - y_test)^2)
 cat("Mean Squared Error on Test Set:", test_mse, "\n")
 ```
 
-```{r enet sensitivity-specificity, warning = FALSE}
-# convert hs_zbmi_who to binary based on median
-median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
-selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+The MSE on the test set was `0.7391896`.
 
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
+```{r cv k-fold enet, warning = FALSE}
+perform_cv <- function(data, response, k = 10) {
+  # make k-folds
+  folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+  
+  mse_values <- c()
+  
+  for (i in 1:k) {
+    train_indices <- folds[[i]]
+    train_data <- data[train_indices, ]
+    test_data <- data[-train_indices, ]
+    
+    x_train <- model.matrix(as.formula(paste(response, "~ .")), train_data)[, -1]
+    y_train <- train_data[[response]]
+    x_test <- model.matrix(as.formula(paste(response, "~ .")), test_data)[, -1]
+    y_test <- test_data[[response]]
+    
+    # add enet with cv.glmnet
+    enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "gaussian", penalty.factor = penalty_factors)
+    
+    enet_predictions <- predict(enet_model, s = ridge_model$lambda.min, newx = x_test)
+    
+    mse <- mean((enet_predictions - y_test)^2)
+    mse_values <- c(mse_values, mse)
+  }
+  
+  return(mse_values)
+}
 
-x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
-y_train <- train_data$hs_zbmi_who_binary
-x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
-y_test <- test_data$hs_zbmi_who_binary
+cv_mse_values <- perform_cv(selected_metabolomics_data, "hs_zbmi_who", k = 10)
 
-# fit enet model using cross-validation
-enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "binomial")
-plot(enet_model)
-
-best_lambda <- enet_model$lambda.min
-cat("Best Lambda:", best_lambda, "\n")
-
-coef(enet_model, s = best_lambda)
-
-enet_predictions <- predict(enet_model, s = best_lambda, newx = x_test, type = "response")
-
-# convert probabilities to binary predictions
-binary_predictions <- ifelse(enet_predictions > 0.5, 1, 0)
-
-# make sure levels match between binary_predictions and y_test
-binary_predictions <- factor(binary_predictions, levels = c(0, 1))
-y_test <- factor(y_test, levels = c(0, 1))
-
-# accuracy accuracy
-accuracy <- mean(binary_predictions == y_test)
-cat("Ridge Accuracy on Test Set:", accuracy, "\n")
-
-conf_matrix <- confusionMatrix(binary_predictions, y_test)
-conf_matrix
-
-# ROC Curve and AUC
-roc_curve <- roc(as.numeric(y_test), as.numeric(enet_predictions))
-plot(roc_curve, main = "ROC Curve for Elastic Net Model")
-auc_value <- auc(roc_curve)
-cat("Elastic Net AUC on Test Set:", auc_value, "\n")
+# cross-validation results
+cat("Cross-Validation Mean Squared Errors:", cv_mse_values, "\n")
+cat("Mean MSE:", mean(cv_mse_values), "\n")
+cat("Standard Deviation of MSE:", sd(cv_mse_values), "\n")
 ```
+
+The Elastic Net model's test set MSE of `0.7391896` is slightly lower than the mean MSE from cross-validation (`0.9340275`), suggesting that the model generalizes reasonably well to new data. The standard deviation of `0.0981024` indicates moderate variability in model performance across different subsets of the data. This suggests that the model is relatively stable but has some sensitivity to the specific data used for training and testing.
+
+The Elastic Net model performs similarly to the LASSO and Ridge models in terms of predictive accuracy, with a slightly lower test set MSE. However, the higher mean MSE from cross-validation suggests that the Elastic Net model may be more sensitive to the data splits.
+
+## Decision Trees
+
+```{r}
+set.seed(101)
+tree_model <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
+rpart.plot(tree_model)
+tree_predictions <- predict(tree_model, newdata = test_data)
+tree_mse <- mean((tree_predictions - y_test)^2)
+cat("Decision Tree Mean Squared Error on Test Set:", tree_mse, "\n")
+```
+
+```{r}
+perform_cv_dt <- function(data, response, k = 10) {
+    folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+    
+    mse_values <- c()
+    
+    for (i in 1:k) {
+        train_indices <- folds[[i]]
+        train_data <- data[train_indices, ]
+        test_data <- data[-train_indices, ]
+        
+        dt_model <- rpart(as.formula(paste(response, "~ .")), data = train_data, method = "anova")
+        dt_predictions <- predict(dt_model, newdata = test_data)
+        y_test <- test_data[[response]]
+        
+        mse <- mean((dt_predictions - y_test)^2)
+        mse_values <- c(mse_values, mse)
+    }
+    
+    return(mse_values)
+}
+
+# Perform external cross-validation
+cv_dt_mse_values <- perform_cv_dt(selected_metabolomics_data, "hs_zbmi_who", k = 10)
+
+# Print results
+cat("Cross-Validation Mean Squared Errors for Decision Tree:", cv_dt_mse_values, "\n")
+cat("Mean MSE for Decision Tree:", mean(cv_dt_mse_values), "\n")
+cat("Standard Deviation of MSE for Decision Tree:", sd(cv_dt_mse_values), "\n")
+```
+
+The decision tree model's test set MSE of `1.545318` is significantly higher compared to the Elastic Net, Ridge, LASSO, and other models. This indicates that the decision tree model is less accurate in predicting the BMI Z-scores.
+
+The standard deviation of `0.1270397` indicates moderate variability in model performance across different subsets of the data. This suggests that the model's performance is somewhat consistent but still varies based on the specific data used for training and testing.
+
+The decision tree model performs worse than the other models (LASSO, Ridge, and Elastic Net) in terms of predictive accuracy, as evidenced by the higher MSE values. The higher test set MSE and mean MSE from cross-validation indicate that the decision tree model is less suitable for this particular prediction task.
 
 ## Random Forest
 
 ```{r rand forest predictions}
 set.seed(101)
-rf_model <- randomForest(hs_zbmi_who ~ . -hs_zbmi_who_binary, data = train_data, ntree = 500)
+rf_model <- randomForest(hs_zbmi_who ~ . , data = train_data, ntree = 500)
 
 rf_predictions <- predict(rf_model, newdata = test_data)
 
@@ -1391,67 +1402,56 @@ importance(rf_model)
 varImpPlot(rf_model)
 ```
 
-```{r ROC and AUC, warning = FALSE}
-# ROC Curve and AUC
-roc_curve <- roc(as.numeric(as.character(y_test)), as.numeric(as.character(rf_predictions)))
-plot(roc_curve, main = "ROC Curve for Random Forest Model")
-auc_value <- auc(roc_curve)
-cat("Random Forest AUC on Test Set:", auc_value, "\n")
+The most important variables were `hs_pcb170_cadj_Log2`, `hs_pcb153_cadj_Log2`, `hs_dde_cadj_Log2`, and `metab_95`.
+
+The Random Forest model's test set MSE of `1.005087` is lower than the Decision Tree model but higher than LASSO, Ridge, and Elastic Net models. This indicates that while Random Forest performs better than a single decision tree, it still has a higher prediction error compared to regularized linear models.
+
+The standard deviation of `0.1156282` indicates moderate variability in model performance across different subsets of the data. This suggests that the model's performance is relatively consistent but varies slightly based on the specific data used for training and testing.
+
+```{r}
+set.seed(101)
+
+perform_cv_rf <- function(data, response, k = 10, ntree = 500) {
+  folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+  
+  mse_values <- c()
+  
+  for (i in 1:k) {
+    train_indices <- folds[[i]]
+    train_data <- data[train_indices, ]
+    test_data <- data[-train_indices, ]
+    
+    rf_model <- randomForest(as.formula(paste(response, "~ .")), data = train_data, ntree = ntree)
+    rf_predictions <- predict(rf_model, newdata = test_data)
+    y_test <- test_data[[response]]
+    
+    mse <- mean((rf_predictions - y_test)^2)
+    mse_values <- c(mse_values, mse)
+  }
+  
+  return(mse_values)
+}
+
+cv_rf_mse_values <- perform_cv_rf(selected_metabolomics_data, "hs_zbmi_who", k = 10, ntree = 500)
+
+cat("Cross-Validation Mean Squared Errors for Random Forest:", cv_rf_mse_values, "\n")
+cat("Mean MSE for Random Forest:", mean(cv_rf_mse_values), "\n")
+cat("Standard Deviation of MSE for Random Forest:", sd(cv_rf_mse_values), "\n")
 ```
 
-```{r rf sensitivity-specificity , warning = FALSE}
-selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
-
-# hs_zbmi_who to binary based on median
-median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
-selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
-selected_metabolomics_data$hs_zbmi_who_binary <- factor(selected_metabolomics_data$hs_zbmi_who_binary, levels = c(0, 1), labels = c("0", "1"))
-
-set.seed(101)
-trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data <- selected_metabolomics_data[trainIndex,]
-test_data  <- selected_metabolomics_data[-trainIndex,]
-
-x_train <- model.matrix(hs_zbmi_who_binary ~ . , train_data)[,-1]
-y_train <- train_data$hs_zbmi_who_binary
-x_test <- model.matrix(hs_zbmi_who_binary ~ . , test_data)[,-1]
-y_test <- test_data$hs_zbmi_who_binary
-
-set.seed(101)
-rf_model <- randomForest(hs_zbmi_who_binary ~ . -hs_zbmi_who, data = train_data, ntree = 500)
-
-rf_predictions_prob <- predict(rf_model, newdata = test_data, type = "prob")[,2]
-rf_predictions <- predict(rf_model, newdata = test_data)
-
-rf_mse <- mean((as.numeric(as.character(rf_predictions)) - as.numeric(as.character(y_test)))^2)
-cat("Random Forest Mean Squared Error on Test Set:", rf_mse, "\n")
-
-importance(rf_model)
-varImpPlot(rf_model)
-
-# ROC Curve and AUC
-roc_curve <- roc(as.numeric(as.character(y_test)), as.numeric(as.character(rf_predictions_prob)))
-plot(roc_curve, main = "ROC Curve for Random Forest Model")
-auc_value <- auc(roc_curve)
-cat("Random Forest AUC on Test Set:", auc_value, "\n")
-
-conf_matrix <- confusionMatrix(rf_predictions, y_test)
-print(conf_matrix)
-```
+The Random Forest model performs better than the Decision Tree model but worse than the LASSO, Ridge, and Elastic Net models in terms of predictive accuracy. The relatively high test set MSE and cross-validation mean MSE indicate that the Random Forest model may not capture the complexity of the relationships in the data as effectively as the regularized linear models. However, the Random Forest model does provide insights into the importance of various predictor variables, which can be valuable for understanding the factors influencing BMI Z-scores.
 
 ## GBM
 
 ```{r gbm predictions, warning = FALSE}
 set.seed(101)
-gbm_model <- gbm(hs_zbmi_who ~ . - hs_zbmi_who_binary, data = train_data, 
+gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data, 
                  distribution = "gaussian",
                  n.trees = 1000,
                  interaction.depth = 3,
                  n.minobsinnode = 10,
                  shrinkage = 0.01,
-                 cv.folds = 5,
+                 cv.folds = 10,
                  verbose = TRUE)
 best_trees <- gbm.perf(gbm_model, method = "cv")
 gbm_predictions <- predict(gbm_model, newdata = test_data, n.trees = best_trees)
@@ -1462,9 +1462,71 @@ gbm_importance <- summary(gbm_model)
 print(gbm_importance)
 ```
 
-## Group LASSO
+The MSE on the test set was `0.908953`. This indicates the average squared difference between the predicted and actual BMI Z-scores on the test data, suggesting that the GBM model performs better than the Random Forest and Decision Tree models but worse than some of the regularized linear models.
 
-### With Metabolomics
+The top predictors (in terms of relative importance) are:
+
+-   `h_cohort`: 17.603606
+
+-   `hs_pcb170_cadj_Log2`: 14.908312
+
+-   `hs_pcb153_cadj_Log2`: 12.522132
+
+-   `hs_child_age_None`: 9.124261
+
+-   `e3_yearbir_None`: 6.265682
+
+```{r gbm cv, warning = FALSE}
+perform_cv_gbm <- function(data, response, k = 10, n.trees = 1000, interaction.depth = 3, n.minobsinnode = 10, shrinkage = 0.01) {
+    folds <- createFolds(data[[response]], k = k, list = TRUE, returnTrain = TRUE)
+    
+    mse_values <- c()
+    
+    for (i in 1:k) {
+        train_indices <- folds[[i]]
+        train_data <- data[train_indices, ]
+        test_data <- data[-train_indices, ]
+        
+        gbm_model <- gbm(as.formula(paste(response, "~ .")), data = train_data, 
+                         distribution = "gaussian",
+                         n.trees = n.trees,
+                         interaction.depth = interaction.depth,
+                         n.minobsinnode = n.minobsinnode,
+                         shrinkage = shrinkage,
+                         cv.folds = 5, 
+                         verbose = FALSE)
+        
+        best_trees <- gbm.perf(gbm_model, method = "cv")
+        gbm_predictions <- predict(gbm_model, newdata = test_data, n.trees = best_trees)
+        y_test <- test_data[[response]]
+        
+        mse <- mean((gbm_predictions - y_test)^2)
+        mse_values <- c(mse_values, mse)
+    }
+    
+    return(mse_values)
+}
+
+# Perform external cross-validation
+cv_gbm_mse_values <- perform_cv_gbm(selected_metabolomics_data, "hs_zbmi_who", k = 10, n.trees = 1000, interaction.depth = 3, n.minobsinnode = 10, shrinkage = 0.01)
+
+# Print results
+cat("Cross-Validation Mean Squared Errors for GBM:", cv_gbm_mse_values, "\n")
+cat("Mean MSE for GBM:", mean(cv_gbm_mse_values), "\n")
+cat("Standard Deviation of MSE for GBM:", sd(cv_gbm_mse_values), "\n")
+```
+
+The GBM model's test set MSE of `0.908953` is better than the Random Forest model (MSE: `1.005087`) and the Decision Tree model (MSE: `1.545318`), but worse than the LASSO (MSE: `0.7417664`), Ridge (MSE: `0.7391414`), and Elastic Net (MSE: `0.7391896`) models.
+
+The standard deviation of `0.131044` indicates moderate variability in model performance across different subsets of the data. This suggests that the model's performance is relatively consistent but varies slightly based on the specific data used for training and testing.
+
+The GBM model performs better than the Random Forest and Decision Tree models but worse than the LASSO, Ridge, and Elastic Net models in terms of predictive accuracy. The relatively lower test set MSE and cross-validation mean MSE compared to the other tree-based models indicate that the GBM model captures the complexity of the relationships in the data more effectively. However, the regularized linear models (LASSO, Ridge, and Elastic Net) still outperform the GBM model in this specific dataset. The GBM model also provides insights into the importance of various predictor variables, which can be valuable for understanding the factors influencing BMI Z-scores.
+
+# Group LASSO
+
+## With Metabolomics
+
+Using group lasso since there are variables that are correlated with each other.
 
 ```{r group lasso metabol, warning = FALSE}
 selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
@@ -1532,7 +1594,11 @@ auc_value <- auc(roc_curve)
 cat("Group LASSO AUC on Test Set:", auc_value)
 ```
 
-### Without Metabolomics
+Using the median to convert the continuous outcome to a binary variable ensures a balanced dataset and robust classification threshold, leading to a more interpretable and reliable model.
+
+The Group LASSO model shows a good ability to predict the binary outcome with an accuracy of 71.2% and an AUC of 0.7796.
+
+## Without Metabolomics
 
 ```{r group lasso without metabol, warning=FALSE}
 finalized_data <- finalized_data %>% na.omit()
@@ -1595,3 +1661,174 @@ auc_value <- auc(roc_curve)
 cat("Group LASSO AUC on Test Set:", auc_value, "\n")
 ```
 
+The AUC value of `0.7135487` indicates a good discriminatory ability of the model. An AUC closer to 1 suggests a better-performing model, whereas an AUC closer to 0.5 suggests a model with no discriminative power.
+
+The accuracy dropped from 71.2% to 65.9% when metabolomics data was excluded, indicating that metabolomics data provided valuable information for prediction. The AUC also dropped from 0.7796 to 0.7135, suggesting that the model's ability to distinguish between the classes was better when metabolomics data was included.
+
+Excluding metabolomics data from the Group LASSO model resulted in a decrease in both accuracy and AUC, highlighting the importance of metabolomics data in predicting the binary outcome. While the model without metabolomics still performed reasonably well, the inclusion of metabolomics data improved the model's performance and discriminative ability. This underscores the value of high-dimensional data like metabolomics in enhancing predictive models in health-related studies.
+
+# Binary Outcome?
+
+To look into the sensitivity/specificity using the median of BMI Z-scores. Looking at this dichotomously can perhaps provide a perspective in how the data shows where the observed may be predicted.
+
+```{r lasso sensitivity-specificity}
+# convert hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . - hs_zbmi_who, test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+#to freeze the covariates and make sure they are not shrinked
+penalty_factors <- rep(1, ncol(x_train))
+penalty_factors[colnames(x_train) %in% covariates_selected] <- 0
+
+# fit LASSO model using cross-validation
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial", penalty.factor = penalty_factors)
+plot(lasso_model)
+
+best_lambda <- lasso_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+# Get coefficients at best lambda
+coef(lasso_model, s = best_lambda)
+
+lasso_predictions <- predict(lasso_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(lasso_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# evaluate accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("LASSO Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(lasso_predictions))
+plot(roc_curve, main = "ROC Curve for LASSO Model")
+auc_value <- auc(roc_curve)
+cat("LASSO AUC on Test Set:", auc_value, "\n")
+```
+
+```{r ridge sensitivity-specificity, warning = FALSE}
+# fit ridge model using cross-validation
+ridge_model <- cv.glmnet(x_train, y_train, alpha = 0, family = "binomial", penalty.factor = penalty_factors)
+plot(ridge_model)
+
+best_lambda <- ridge_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+coef(ridge_model, s = best_lambda)
+
+ridge_predictions <- predict(ridge_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(ridge_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# accuracy accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("Ridge Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(ridge_predictions))
+plot(roc_curve, main = "ROC Curve for Ridge Model")
+auc_value <- auc(roc_curve)
+cat("Ridge AUC on Test Set:", auc_value, "\n")
+```
+
+```{r enet sensitivity-specificity, warning = FALSE}
+# fit enet model using cross-validation
+enet_model <- cv.glmnet(x_train, y_train, alpha = 0.5, family = "binomial", penalty.factor = penalty_factors)
+plot(enet_model)
+
+best_lambda <- enet_model$lambda.min
+cat("Best Lambda:", best_lambda, "\n")
+
+coef(enet_model, s = best_lambda)
+
+enet_predictions <- predict(enet_model, s = best_lambda, newx = x_test, type = "response")
+
+# convert probabilities to binary predictions
+binary_predictions <- ifelse(enet_predictions > 0.5, 1, 0)
+
+# make sure levels match between binary_predictions and y_test
+binary_predictions <- factor(binary_predictions, levels = c(0, 1))
+y_test <- factor(y_test, levels = c(0, 1))
+
+# accuracy accuracy
+accuracy <- mean(binary_predictions == y_test)
+cat("Ridge Accuracy on Test Set:", accuracy, "\n")
+
+conf_matrix <- confusionMatrix(binary_predictions, y_test)
+conf_matrix
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(y_test), as.numeric(enet_predictions))
+plot(roc_curve, main = "ROC Curve for Elastic Net Model")
+auc_value <- auc(roc_curve)
+cat("Elastic Net AUC on Test Set:", auc_value, "\n")
+```
+
+```{r rf sensitivity-specificity, warning = FALSE}
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
+
+# hs_zbmi_who to binary based on median
+median_value <- median(selected_metabolomics_data$hs_zbmi_who, na.rm = TRUE)
+selected_metabolomics_data$hs_zbmi_who_binary <- ifelse(selected_metabolomics_data$hs_zbmi_who > median_value, 1, 0)
+selected_metabolomics_data$hs_zbmi_who_binary <- factor(selected_metabolomics_data$hs_zbmi_who_binary, levels = c(0, 1), labels = c("0", "1"))
+
+set.seed(101)
+trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who_binary, p = .7, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- selected_metabolomics_data[trainIndex,]
+test_data  <- selected_metabolomics_data[-trainIndex,]
+
+x_train <- model.matrix(hs_zbmi_who_binary ~ . , train_data)[,-1]
+y_train <- train_data$hs_zbmi_who_binary
+x_test <- model.matrix(hs_zbmi_who_binary ~ . , test_data)[,-1]
+y_test <- test_data$hs_zbmi_who_binary
+
+set.seed(101)
+rf_model <- randomForest(hs_zbmi_who_binary ~ . -hs_zbmi_who, data = train_data, ntree = 500)
+
+rf_predictions_prob <- predict(rf_model, newdata = test_data, type = "prob")[,2]
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+rf_mse <- mean((as.numeric(as.character(rf_predictions)) - as.numeric(as.character(y_test)))^2)
+cat("Random Forest Mean Squared Error on Test Set:", rf_mse, "\n")
+
+importance(rf_model)
+varImpPlot(rf_model)
+
+# ROC Curve and AUC
+roc_curve <- roc(as.numeric(as.character(y_test)), as.numeric(as.character(rf_predictions_prob)))
+plot(roc_curve, main = "ROC Curve for Random Forest Model")
+auc_value <- auc(roc_curve)
+cat("Random Forest AUC on Test Set:", auc_value, "\n")
+
+conf_matrix <- confusionMatrix(rf_predictions, y_test)
+print(conf_matrix)
+```
