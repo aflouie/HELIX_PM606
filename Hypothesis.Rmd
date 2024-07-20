@@ -337,6 +337,8 @@ outcome_BMI <- phenotype %>%
 summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
+# Descriptive Tables
+
 ```{r combining all data, warning=FALSE}
 # Combine all selected data
 combined_data <- cbind(covariate_data, lifestyle_exposome, chemical_exposome, outcome_BMI)
