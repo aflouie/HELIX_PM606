@@ -60,7 +60,7 @@ These studies collectively illustrate the critical role of environmental EDCs in
 
 # Data Description
 
-This study will utilize data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
+This study utilizes data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals like BPA and PCBs in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between EDC exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
 
 ```{r load data and codebook, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
@@ -214,43 +214,43 @@ num_plots <- lapply(unique_numerical_vars, function(var) {
 })
 ```
 
-Cadmium (hs_cd_c_Log2): The distribution of cadmium levels is skewed to the right, indicating that most participants have lower exposure levels, with a few cases showing significantly higher exposures.
+Cadmium (hs_cd_c_Log2): The histogram for Cadmium exposure (hs_cd_c_Log2) shows a relatively symmetric distribution centered around 4 on the log2 scale. Most values range from approximately 3 to 5, with few outliers.
 
-Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew. This suggests a common source of exposure with varying levels among the population.
+Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew, peaking around 3.5.
 
-Cesium (hs_cs_c_Log2): Exhibits a right-skewed distribution, indicating that most participants have relatively low exposure levels, but a small number have substantially higher exposures.
+Cesium (hs_cs_c_Log2): Exhibits a right-skewed distribution, indicating that most participants have relatively low exposure levels, but a small number have substantially higher exposures. Majority of the data centered around 1.5 to 2.5
 
 Copper (hs_cu_c_Log2): Shows a right-skewed distribution, suggesting that while most individuals have moderate exposure, a few experience significantly higher levels of copper.
 
 Mercury (hs_hg_c_Log2): This distribution is also right-skewed, common for environmental pollutants, where a majority have lower exposure levels, and a minority have high exposure levels.
 
-Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures.
+Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures. Has a sharp peak around 6, indicating that most values fall within a narrow range.
 
 Lead (hs_pb_c_Log2): The distribution is slightly right-skewed, indicating higher exposure levels in a smaller group of the population compared to the majority.
 
 DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population..
 
-PCB 153 (hs_pcb153_cadj_Log2): Has a distribution with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population.
+PCB 153 (hs_pcb153_cadj_Log2): Has a distribution with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population. Bimodal, indicating two peaks around 2 and 4.
 
 PCB 170 (hs_pcb170_cadj_Log2): This histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
 
-DEP and PBDE 153: These histograms mostly show multimodal distributions (more than one peak), suggesting different exposure sources or groups within the population that have distinct exposure levels. The multiple peaks could indicate varied exposure pathways or differences in how these chemicals are metabolized or retained in the body.
+DEP (hs_dep_cadj_Log2): DEP exposure has a sharp peak around 6, indicating a narrow distribution of values.
 
-PFHxS and PFOA: These perfluorinated compounds display a roughly normal distribution skewed right, suggesting a common source of exposure among the population, but with some individuals experiencing higher exposures.
+PBDE 153 (hs_pbde153_cadj_Log2): This histogram shows a bimodal distribution, with peaks around 1 and 4.
 
-PFOS and PFUnDA: The histograms show a single, sharp peak with a rapid decline, indicating that most individuals have similar exposure levels, likely due to common environmental sources or regulatory controls limiting variability.
+PFHxS: Distribution peaks around 5 with a broad spread, indicating variation in PFHxS levels.
 
-MBZP (Monobenzyl Phthalate): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures.
+PFOA: Shows a peak around 6 with a symmetrical distribution, indicating consistent PFOA levels.
 
-MECPP (Mono-ethyl hexyl phthalate): The distribution is right-skewed, similar to MBZP, but with a smoother decline. This pattern also indicates that while most subjects have lower exposure levels, a few experience significantly higher exposures.
+PFOS: Similar to PFOA, the distribution peaks around 6, indicating consistent PFOS levels.
 
-MEHHP (Mono-2-ethyl-5-hydroxyhexyl phthalate): Exhibits a unimodal distribution with a peak around a middle value and symmetric tails. This could indicate a more standardized exposure level among the subjects with some variation.
+Propyl Paraben (hs_prpa_cadj_Log2): The distribution peaks around 6 with a broad spread, indicating variability in propyl paraben levels.
 
-MEHP (Mono-ethylhexyl phthalate):Another right-skewed distribution, indicating that most subjects have lower exposure levels but a few have much higher levels.
+Monobenzyl Phthalate (hs_mbzp_cadj_Log2): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures. Shows a broad distribution with a peak around 4, indicating variation in monobenzyl phthalate levels. Indicates consistent but varied exposure levels.
 
-MEOHP (Mono-2-ethyl-5-oxohexyl phthalate): This histogram shows a distribution with a peak around the middle values and a tail extending towards higher values, suggesting a central tendency with some higher exposures.
+Monoisobutyl Phthalate (hs_mibp_cadj_Log2): The distribution is right-skewed, similar to MBZP, but with a smoother decline. This pattern also indicates that while most subjects have lower exposure levels, a few experience significantly higher exposures.
 
-MEP (Mono-ethyl phthalate): The distribution is right-skewed, similar to others, showing most subjects with low to moderate levels of exposure, but a few have much higher levels.
+Mono-n-butyl Phthalate (hs_mnbp_cadj_Log2): Peaks around 4, indicating consistent exposure levels with some variation. Few outliers are present.
 
 ```{r chemical corr, warning=FALSE}
 numeric_chemical <- select_if(chemical_exposome, is.numeric)
@@ -1078,6 +1078,8 @@ cat("Baseline Decision Tree MSE:", mse_tree, "\n")
 cat("Baseline Decision Tree RMSE:", rmse_tree, "\n")
 ```
 
+The decision tree indicates the importance of covariates, with cohort being significant predictors.
+
 ### Random Forest
 
 ```{r}
@@ -1091,10 +1093,13 @@ cat("Baseline Random Forest MSE:", mse_rf, "\n")
 cat("Baseline Random Forest RMSE:", rmse_rf, "\n")
 ```
 
+Importance plots show that age and cohort are the most influential variables.
+
 ### GBM
 
 ```{r}
 fit_gbm <- gbm(hs_zbmi_who ~ ., data = train_data, distribution = "gaussian", n.trees = 1000, interaction.depth = 3, shrinkage = 0.01, cv.folds = 5, verbose = FALSE)
+summary(fit_gbm)
 best_trees <- gbm.perf(fit_gbm, method = "cv")
 gbm_predictions <- predict(fit_gbm, newdata = test_data, n.trees = best_trees)
 mse_gbm <- mean((test_data$hs_zbmi_who - gbm_predictions)^2)
@@ -1103,6 +1108,19 @@ rmse_gbm <- sqrt(mse_gbm)
 cat("Baseline GBM MSE:", mse_gbm, "\n")
 cat("Baseline GBM RMSE:", rmse_gbm, "\n")
 ```
+
+Model Comparison:
+
+The results indicate that Ridge Regression performs slightly better than Lasso and Elastic Net in terms of MSE and RMSE.
+
+The Decision Tree model also performs comparably to the regularization methods with an MSE of 1.251 and RMSE of 1.119. Decision Trees are advantageous for their interpretability, providing clear decision rules based on the covariates.
+
+The Random Forest model shows a slightly higher MSE (1.286) and RMSE (1.134) compared to the regularization methods and Decision Tree. Despite the slightly higher error metrics, Random Forest models are powerful in capturing complex interactions between variables due to the ensemble approach of multiple decision trees.
+
+GBM performs better than Random Forest with an MSE of 1.262 and RMSE of 1.124, indicating its effectiveness in reducing error through boosting iterations.
+
+Age and cohort are consistently the most important variables across different models.
+Regularized regression models (Ridge and Elastic Net) provide a balance between prediction accuracy and model interpretability.
 
 ## Diet + Covariates
 
@@ -1182,6 +1200,8 @@ cat("Diet + Covariates Elastic Net MSE:", mse_enet, "\n")
 cat("Diet + Covariates Elastic Net RMSE:", rmse_enet, "\n")
 ```
 
+Ridge Regression continues to perform well with the addition of diet variables, maintaining its position as one of the best regularization techniques.
+
 ### Decision Tree
 
 ```{r}
@@ -1196,6 +1216,8 @@ rmse_tree <- sqrt(mse_tree)
 cat("Diet + Covariates Decision Tree MSE:", mse_tree, "\n")
 cat("Diet + Covariates Decision Tree RMSE:", rmse_tree, "\n")
 ```
+
+The top predictor is h_cohort3, followed by hs_child_age_None and hs_bakery_prod_Ter. The Decision Tree model slightly improves when adding diet variables, with a decrease in both MSE (from 1.251 to 1.250) and RMSE (from 1.119 to 1.118).
 
 ### Random Forest
 
@@ -1212,11 +1234,14 @@ cat("Diet + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Diet + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
 
+The Random Forest model shows a slight improvement when diet variables are included, with MSE decreasing from 1.286 to 1.283 and RMSE from 1.134 to 1.133.
+
 ### GBM
 
 ```{r}
 set.seed(101)
 fit_gbm <- gbm(hs_zbmi_who ~ ., data = train_data, distribution = "gaussian", n.trees = 1000, interaction.depth = 3, shrinkage = 0.01, cv.folds = 5, verbose = FALSE)
+summary(fit_gbm)
 best_trees <- gbm.perf(fit_gbm, method = "cv")
 gbm_predictions <- predict(fit_gbm, newdata = test_data, n.trees = best_trees)
 mse_gbm <- mean((test_data$hs_zbmi_who - gbm_predictions)^2)
@@ -1225,6 +1250,12 @@ rmse_gbm <- sqrt(mse_gbm)
 cat("Diet + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Diet + Covariates GBM RMSE:", rmse_gbm, "\n")
 ```
+
+GBM shows a significant improvement with diet variables, indicating its effectiveness in leveraging additional predictors for better performance.
+
+Model Comparison:
+
+Both Decision Tree and Random Forest models benefit from the inclusion of diet variables, although the improvements are modest. These models can capture complex interactions between diet and covariates.These findings suggest that dietary factors, in conjunction with covariates, enhance the predictive power of the models, justifying their inclusion in more complex modeling efforts.
 
 ## Chemicals + Covariates
 
@@ -1296,6 +1327,8 @@ cat("Chemical + Covariates Elastic Net MSE:", mse_enet, "\n")
 cat("Chemical + Covariates Elastic Net RMSE:", rmse_enet, "\n")
 ```
 
+Lasso and Ridge Regression: Both models show marked improvements, indicating that chemical variables are highly predictive.
+
 ### Decision Tree
 
 ```{r}
@@ -1309,6 +1342,8 @@ rmse_tree <- sqrt(mse_tree)
 cat("Chemical + Covariates Decision Tree MSE:", mse_tree, "\n")
 cat("Chemical + Covariates Decision Tree RMSE:", rmse_tree, "\n")
 ```
+
+The Decision Tree model benefits from chemical variables, though the improvements are more modest compared to the other models.
 
 ### Random Forest
 
@@ -1328,6 +1363,7 @@ cat("Chemical + Covariates Random Forest RMSE:", rmse_rf, "\n")
 
 ```{r}
 fit_gbm <- gbm(hs_zbmi_who ~ ., data = train_data, distribution = "gaussian", n.trees = 100, interaction.depth = 3, shrinkage = 0.01, cv.folds = 5)
+summary(fit_gbm)
 best_iter <- gbm.perf(fit_gbm, method = "cv")
 
 gbm_predictions <- predict(fit_gbm, newdata = test_data, n.trees = best_iter)
@@ -1338,7 +1374,9 @@ cat("Chemical + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Chemical + Covariates GBM RMSE:", rmse_gbm, "\n")
 ```
 
-## Diet + Chemical + Covariates (Grouped)
+The GBM model shows substantial improvement, with MSE decreasing from 1.262 to 1.129 and RMSE from 1.124 to 1.062. The GBM model also benefits significantly from the inclusion of chemical variables, showcasing its effectiveness in leveraging additional predictors.
+
+## Diet + Chemical + Covariates
 
 ```{r}
 covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
@@ -1437,9 +1475,12 @@ cat("Group Elastic Net MSE:", mse_group_enet, "\n")
 cat("Group Elastic Net RMSE:", rmse_group_enet, "\n")
 ```
 
+Lasso and Ridge Regression: These models show marked improvements, suggesting that the combined diet and chemical variables significantly enhance predictive power.
+
 ### Decision Tree
 
 ```{r}
+set.seed(101)
 fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
 rpart.plot(fit_tree)
 
@@ -1451,9 +1492,12 @@ cat("Diet + Chemical + Covariates Decision Tree MSE:", mse_tree, "\n")
 cat("Diet + Chemical + Covariates Decision Tree RMSE:", rmse_tree, "\n")
 ```
 
+The Decision Tree model shows an improvement with the inclusion of diet and chemical variables, with MSE remaining at 1.240 and RMSE at 1.114. However, the change is not as pronounced as in regularization methods.
+
 ### Random Forest
 
 ```{r}
+set.seed(101)
 fit_rf <- randomForest(hs_zbmi_who ~ ., data = train_data, ntree = 500)
 varImpPlot(fit_rf)
 importance(fit_rf)
@@ -1466,10 +1510,14 @@ cat("Diet + Chemical + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Diet + Chemical + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
 
+The Random Forest model shows one of the most significant improvements, with MSE dropping from 1.286 to 1.025 and RMSE from 1.134 to 1.012.
+
 ### GBM
 
 ```{r}
+set.seed(101)
 fit_gbm <- gbm(hs_zbmi_who ~ ., data = train_data, distribution = "gaussian", n.trees = 100, interaction.depth = 3, shrinkage = 0.01, cv.folds = 5)
+summary(fit_gbm)
 best_iter <- gbm.perf(fit_gbm, method = "cv")
 
 gbm_predictions <- predict(fit_gbm, newdata = test_data, n.trees = best_iter)
@@ -1479,6 +1527,8 @@ rmse_gbm <- sqrt(mse_gbm)
 cat("Diet + Chemical + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Diet + Chemical + Covariates GBM RMSE:", rmse_gbm, "\n")
 ```
+
+The GBM model also shows significant improvement, with MSE decreasing from 1.262 to 1.128 and RMSE from 1.124 to 1.062.
 
 ## Diet + Chemical + Metabolomic + Covariates
 
@@ -1642,6 +1692,8 @@ cat("Group Elastic Net MSE:", mse_group_enet, "\n")
 cat("Group Elastic Net RMSE:", rmse_group_enet, "\n")
 ```
 
+Lasso Regression: Shows the most significant improvement, demonstrating the value of the combined variables in predictive modeling.
+
 ### Decision Trees
 
 ```{r}
@@ -1669,13 +1721,16 @@ cat("Diet + Chemical + Metabolomic + Covariates Decision Tree MSE:", tree_mse, "
 cat("Diet + Chemical + Metabolomic + Covariates Decision Tree RMSE:", rmse_tree, "\n")
 ```
 
+The Decision Tree model shows a higher MSE of 1.545 and RMSE of 1.243 when all variables are included, indicating it may struggle with the complexity introduced by metabolomic data.
+
 ### Random Forest
 
 ```{r rand forest predictions}
 set.seed(101)
 rf_model <- randomForest(hs_zbmi_who ~ . , data = train_data, ntree = 500)
 importance(rf_model)
-varImpPlot(rf_model)
+par(mar = c(6, 14, 4, 4) + 0.1) 
+varImpPlot(rf_model, cex = 0.6)
 
 rf_predictions <- predict(rf_model, newdata = test_data)
 
@@ -1684,6 +1739,8 @@ rmse_rf <- sqrt(rf_mse)
 cat(" Diet + Chemical + Metabolomic + Covariates Random Forest MSE:", rf_mse, "\n")
 cat("Diet + Chemical + Metabolomic + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
+
+Continues to perform robustly, though the improvement is not as pronounced as Lasso or GBM.
 
 ### GBM
 
@@ -1696,6 +1753,7 @@ gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data,
                  shrinkage = 0.01,
                  cv.folds = 5,
                  verbose = TRUE)
+summary(gbm_model)
 
 # finding the best number of trees based on cross-validation
 best_trees <- gbm.perf(gbm_model, method = "cv")
@@ -1706,4 +1764,34 @@ rmse_gbm <- sqrt(mse_gbm)
 cat("Diet + Chemical + Metabolomic + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Diet + Chemical + Metabolomic + Covariates GBM RMSE:", rmse_gbm, "\n")
 summary(gbm_model)
+```
+
+Including diet, chemical, and metabolomic variables with the covariates leads to the best improvements in model performance, indicating these additional predictors provide substantial predictive value.
+
+The GBM model shows the best performance among the advanced models, with MSE decreasing to 0.889 and RMSE to 0.943, highlighting its ability to effectively leverage a comprehensive set of predictors.
+
+# Overall Comparison of MSE/RMSE
+
+```{r}
+results <- data.frame(
+  Model = rep(c("Lasso", "Ridge", "Elastic Net", "Decision Tree", "Random Forest", "GBM"), each = 5),
+  Data_Set = rep(c("Baseline", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemicals + Covariates", "Full Model"), 6),
+  MSE = runif(30, min = 0.2, max = 0.5),  # Replace with actual MSE values
+  RMSE = runif(30, min = 0.4, max = 0.7)  # Replace with actual RMSE values
+)
+
+mse_plot <- ggplot(results, aes(x = Data_Set, y = MSE, fill = Model)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_plot <- ggplot(results, aes(x = Data_Set, y = RMSE, fill = Model)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_plot)
+print(rmse_plot)
 ```
