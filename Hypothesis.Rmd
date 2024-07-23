@@ -70,7 +70,7 @@ filtered_chem_diet <- codebook %>%
 # specific covariates
 filtered_covariates <- codebook %>%
   filter(domain == "Covariates" & 
-         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None"))
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "hs_child_age_None"))
 
 #specific phenotype variables
 filtered_phenotype <- codebook %>%
@@ -260,12 +260,13 @@ corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt 
 
 ### Data Summary Covariates
 
+Covariates were selected on its impact with the postnatal nature of the child.  The only exception is sex and year of birth, which was considered as pregnancy.  This were used since there are differences amongst gender as well as depending on the child's age and when they are born.
+
 ```{r covariates, warning=FALSE}
 # Specified covariates
 specific_covariates <- c(
   "e3_sex_None", 
   "e3_yearbir_None",
-  "h_cohort", 
   "hs_child_age_None"
 )
 
@@ -339,14 +340,14 @@ summarytools::view(dfSummary(outcome_BMI, style = 'grid', plain.ascii = FALSE, v
 
 # Descriptive Tables
 
+## By Gender
+
 ```{r combining all data, warning=FALSE}
-# Combine all selected data
 combined_data <- cbind(covariate_data, lifestyle_exposome, chemical_exposome, outcome_BMI)
 
-# Ensure no duplicated columns
 combined_data <- combined_data[, !duplicated(colnames(combined_data))]
 
-# Convert sex variable to a factor for stratification
+# sex variable to a factor for stratification
 combined_data$e3_sex_None <- as.factor(combined_data$e3_sex_None)
 levels(combined_data$e3_sex_None) <- c("Male", "Female")
 
@@ -358,9 +359,8 @@ render_cat <- function(x) {
   c("", sapply(stats.default(x), function(y) with(y, sprintf("%d (%0.1f %%)", FREQ, PCT))))
 }
 
-# Define the formula for table1
 table1_formula <- ~ 
-  hs_child_age_None + e3_yearbir_None + h_cohort +
+  hs_child_age_None + e3_yearbir_None + 
   hs_zbmi_who +
   h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
   hs_proc_meat_Ter +
@@ -371,7 +371,6 @@ table1_formula <- ~
   hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + hs_prpa_cadj_Log2 +
   hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | e3_sex_None
 
-# Create the table
 table1(
   table1_formula,
   data = combined_data,
@@ -382,22 +381,34 @@ table1(
 )
 ```
 
-```{r descriptive table, warning=FALSE}
-combined_data$h_cohort <- as.factor(combined_data$h_cohort)
-# Create the table
+## By Year of Birth
+
+```{r}
+combined_data$e3_yearbir_None <- as.factor(combined_data$e3_yearbir_None)
+
+render_cont <- function(x) {
+  with(stats.default(x), sprintf("%0.2f (%0.2f)", MEAN, SD))
+}
+
+render_cat <- function(x) {
+  c("", sapply(stats.default(x), function(y) with(y, sprintf("%d (%0.1f %%)", FREQ, PCT))))
+}
+
+table1_formula_year <- ~ 
+  hs_child_age_None + e3_sex_None + 
+  hs_zbmi_who +
+  h_bfdur_Ter + hs_bakery_prod_Ter + hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter + hs_org_food_Ter +
+  hs_proc_meat_Ter +
+  hs_total_fish_Ter + hs_total_fruits_Ter + hs_total_lipids_Ter + hs_total_sweets_Ter + hs_total_veg_Ter +
+  hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 + hs_cu_c_Log2 +
+  hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 + hs_pcb153_cadj_Log2 +
+  hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 + hs_pbde153_cadj_Log2 +
+  hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + hs_prpa_cadj_Log2 +
+  hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | e3_yearbir_None
+
 table1(
-  ~ hs_child_age_None + e3_sex_None + e3_yearbir_None +
-    hs_zbmi_who + h_bfdur_Ter + hs_bakery_prod_Ter +
-    hs_break_cer_Ter + hs_dairy_Ter + hs_fastfood_Ter +
-    hs_org_food_Ter + hs_proc_meat_Ter + hs_total_fish_Ter + hs_total_fruits_Ter +
-    hs_total_lipids_Ter +
-    hs_total_sweets_Ter + hs_total_veg_Ter +
-    hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 + hs_cu_c_Log2 +
-    hs_hg_c_Log2 + hs_mo_c_Log2 + hs_dde_cadj_Log2 + hs_pcb153_cadj_Log2 +
-    hs_pcb170_cadj_Log2 + hs_dep_cadj_Log2 + hs_pbde153_cadj_Log2 +
-    hs_pfhxs_c_Log2 + hs_pfoa_c_Log2 + hs_pfos_c_Log2 + hs_prpa_cadj_Log2 +
-    hs_mbzp_cadj_Log2 + hs_mibp_cadj_Log2 + hs_mnbp_cadj_Log2 | h_cohort,
-    data = combined_data,
+  table1_formula_year,
+  data = combined_data,
   render.continuous = render_cont,
   render.categorical = render_cat,
   overall = TRUE,
@@ -405,7 +416,10 @@ table1(
 )
 ```
 
+
 # All Interested Data
+
+This will look into the full data provided by the diet and chemical variables.  Regression models will look into which variables are important for analysis.
 
 ```{r interested data, warning=FALSE}
 outcome_cov <- cbind(covariate_data, outcome_BMI)
@@ -581,6 +595,8 @@ cat("Elastic Net Test RMSE (Covariates only):", rmse_enet_cov, "\n")
 
 ### Chemicals Data
 
+Chemicals will be analyzed for the best variables using the regression methods.
+
 #### LASSO
 
 ```{r chem lasso, warning=FALSE}
@@ -669,9 +685,11 @@ chemicals_selected <- c(
   "hs_mnbp_cadj_Log2")
 ```
 
-The features for chemicals were selected due to the feature selections of elastic net.
+The features for chemicals were selected due to the feature selections of elastic net.  LASSO might simplify the dimensionality, so elastic net was chosen since feature importance is uncertain.
 
 ### Postnatal Diet Data
+
+Like with the chemical variables, the postnatal diet of children will be analyzed for the best variables using the regression methods.
 
 #### LASSO
 
@@ -685,7 +703,7 @@ diet_data <- diet_outcome_cov[, postnatal_diet]
 x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])  
 x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])  
 
-covariates <- diet_outcome_cov[, c("e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None")]
+covariates <- diet_outcome_cov[, c("e3_sex_None", "e3_yearbir_None", "hs_child_age_None")]
 x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ]) 
 x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
 
@@ -769,93 +787,11 @@ diet_selected <- c(
 )
 ```
 
-### Combined Data (Chemicals & Postnatal Diet)
-
-#### LASSO
-
-```{r, warning=FALSE}
-set.seed(101)
-train_indices <- sample(seq_len(nrow(interested_data)), size = floor(0.7 * nrow(interested_data)))
-test_indices <- setdiff(seq_len(nrow(interested_data)), train_indices)
-
-diet_data <- interested_data[, postnatal_diet]
-x_diet_train <- model.matrix(~ . + 0, data = diet_data[train_indices, ])
-x_diet_test <- model.matrix(~ . + 0, data = diet_data[test_indices, ])
-
-chemical_data <- interested_data[, chemicals_full]
-x_chemical_train <- as.matrix(chemical_data[train_indices, ])
-x_chemical_test <- as.matrix(chemical_data[test_indices, ])
-
-covariates <- interested_data[, c("e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None")]
-x_covariates_train <- model.matrix(~ . + 0, data = covariates[train_indices, ])
-x_covariates_test <- model.matrix(~ . + 0, data = covariates[test_indices, ])
-
-# combine diet and chemical data with and without covariates
-x_combined_train <- cbind(x_diet_train, x_chemical_train)
-x_combined_test <- cbind(x_diet_test, x_chemical_test)
-
-x_full_train <- cbind(x_combined_train, x_covariates_train)
-x_full_test <- cbind(x_combined_test, x_covariates_test)
-
-# make sure no missing values
-x_full_train[is.na(x_full_train)] <- 0
-x_full_test[is.na(x_full_test)] <- 0
-x_combined_train[is.na(x_combined_train)] <- 0
-x_combined_test[is.na(x_combined_test)] <- 0
-
-y_train <- as.numeric(interested_data$hs_zbmi_who[train_indices])
-y_test <- as.numeric(interested_data$hs_zbmi_who[test_indices])
-
-# LASSO
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 1, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
-
-#### Ridge
-
-```{r, warning=FALSE}
-# RIDGE
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
-
-#### Elastic Net
-
-```{r, warning=FALSE}
-# ELASTIC NET
-fit_without_covariates <- cv.glmnet(x_combined_train, y_train, alpha = 0.5, family = "gaussian")
-predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_combined_test)
-mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-plot(fit_without_covariates, xvar = "lambda", main = "Coefficient Path (Without Covariates)")
-
-best_lambda <- fit_without_covariates$lambda.min  # lambda that minimizes the MSE
-coef(fit_without_covariates, s = best_lambda)
-
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
-```
+Elastic net was selected for variable importance since not sure of which features will be considerably important compared to LASSO.
 
 # Finalized Data
 
-Selected data based on the enet features without covariates.
-
-Froze the covariates in lasso, ridge and enet to avoid shrinkage.
+With these now selected variables, the analysis will build up from covariates and adding the other variables.  Froze the covariates in lasso, ridge and enet to avoid shrinkage.
 
 ```{r selected data chemicals, warning=FALSE}
 #selected chemicals that were noted in enet
@@ -996,7 +932,7 @@ penalty_factors[colnames(x_train) %in% covariates_selected] <- 0
 ## Baseline (Covariates)
 
 ```{r}
-covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+covariates_selected <- c("hs_child_age_None", "e3_sex_None", "e3_yearbir_None")
 baseline_data <- finalized_data %>% dplyr::select(c(covariates_selected, "hs_zbmi_who"))
 
 x <- model.matrix(~ . -1, data = baseline_data[ , !names(baseline_data) %in% "hs_zbmi_who"])
@@ -1070,15 +1006,24 @@ fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
 
 rpart.plot(fit_tree)
 
-tree_predictions <- predict(fit_tree, newdata = test_data)
-mse_tree <- mean((test_data$hs_zbmi_who - tree_predictions)^2)
-rmse_tree <- sqrt(mse_tree)
+printcp(fit_tree)
+plotcp(fit_tree)
 
-cat("Baseline Decision Tree MSE:", mse_tree, "\n")
-cat("Baseline Decision Tree RMSE:", rmse_tree, "\n")
+optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
+
+pruned_tree <- prune(fit_tree, cp = optimal_cp)
+
+rpart.plot(pruned_tree)
+
+pruned_tree_predictions <- predict(pruned_tree, newdata = test_data)
+mse_pruned_tree <- mean((test_data$hs_zbmi_who - pruned_tree_predictions)^2)
+rmse_pruned_tree <- sqrt(mse_pruned_tree)
+
+cat("Baseline Pruned Decision Tree MSE:", mse_pruned_tree, "\n")
+cat("Baseline Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-The decision tree indicates the importance of covariates, with cohort being significant predictors.
+The pruned decision tree model has an RMSE of 1.148665 on the test data. This suggests that, on average, the predictions made by the model are off by about 1.15 BMI Z-score units. Since the decision tree used only one variable (hs_child_age_None), it suggests that this variable is a significant predictor of hs_zbmi_who in your dataset. However, the performance metrics indicate that there may be room for improvement, potentially by using more complex models or incorporating additional relevant features.
 
 ### Random Forest
 
@@ -1093,7 +1038,7 @@ cat("Baseline Random Forest MSE:", mse_rf, "\n")
 cat("Baseline Random Forest RMSE:", rmse_rf, "\n")
 ```
 
-Importance plots show that age and cohort are the most influential variables.
+Importance plots show that age and year of birth are the most influential variables.
 
 ### GBM
 
@@ -1113,14 +1058,13 @@ Model Comparison:
 
 The results indicate that Ridge Regression performs slightly better than Lasso and Elastic Net in terms of MSE and RMSE.
 
-The Decision Tree model also performs comparably to the regularization methods with an MSE of 1.251 and RMSE of 1.119. Decision Trees are advantageous for their interpretability, providing clear decision rules based on the covariates.
+The Decision Tree model has a slightly lower MSE (1.319) and RMSE (1.149) compared to Lasso, Ridge, and Elastic Net, indicating marginally better performance.
 
-The Random Forest model shows a slightly higher MSE (1.286) and RMSE (1.134) compared to the regularization methods and Decision Tree. Despite the slightly higher error metrics, Random Forest models are powerful in capturing complex interactions between variables due to the ensemble approach of multiple decision trees.
+The Random Forest model has the highest MSE (1.342) and RMSE (1.159) among the models, suggesting that it may not be the best choice for this particular dataset.
 
-GBM performs better than Random Forest with an MSE of 1.262 and RMSE of 1.124, indicating its effectiveness in reducing error through boosting iterations.
+The GBM model has similar performance to the Decision Tree, with an MSE of 1.320 and an RMSE of 1.149.
 
-Age and cohort are consistently the most important variables across different models.
-Regularized regression models (Ridge and Elastic Net) provide a balance between prediction accuracy and model interpretability.
+The differences in performance are small, indicating that none of the models significantly outperforms the others on the baseline data.
 
 ## Diet + Covariates
 
@@ -1140,7 +1084,7 @@ diet_selected <- c(
   "hs_total_veg_Ter"
 )
 
-covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+covariates_selected <- c("hs_child_age_None", "e3_sex_None", "e3_yearbir_None")
 
 diet_data <- finalized_data %>% dplyr::select(c(covariates_selected, diet_selected, "hs_zbmi_who"))
 
@@ -1209,15 +1153,24 @@ fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
 
 rpart.plot(fit_tree)
 
-tree_predictions <- predict(fit_tree, newdata = test_data)
-mse_tree <- mean((test_data$hs_zbmi_who - tree_predictions)^2)
-rmse_tree <- sqrt(mse_tree)
+printcp(fit_tree)
+plotcp(fit_tree)
 
-cat("Diet + Covariates Decision Tree MSE:", mse_tree, "\n")
-cat("Diet + Covariates Decision Tree RMSE:", rmse_tree, "\n")
+optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
+
+pruned_tree <- prune(fit_tree, cp = optimal_cp)
+
+rpart.plot(pruned_tree)
+
+pruned_tree_predictions <- predict(pruned_tree, newdata = test_data)
+mse_pruned_tree <- mean((test_data$hs_zbmi_who - pruned_tree_predictions)^2)
+rmse_pruned_tree <- sqrt(mse_pruned_tree)
+
+cat("Pruned Decision Tree MSE:", mse_pruned_tree, "\n")
+cat("Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-The top predictor is h_cohort3, followed by hs_child_age_None and hs_bakery_prod_Ter. The Decision Tree model slightly improves when adding diet variables, with a decrease in both MSE (from 1.251 to 1.250) and RMSE (from 1.119 to 1.118).
+The top predictor is child age of above 6 and a half years, followed by bakery products and breakfast cereals in the unpruned tree.
 
 ### Random Forest
 
@@ -1234,7 +1187,7 @@ cat("Diet + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Diet + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
 
-The Random Forest model shows a slight improvement when diet variables are included, with MSE decreasing from 1.286 to 1.283 and RMSE from 1.134 to 1.133.
+The Random Forest model shows a slight improvement when diet variables are included. Age, year of birth, and a diet of vegetables have the most importance.
 
 ### GBM
 
@@ -1255,7 +1208,13 @@ GBM shows a significant improvement with diet variables, indicating its effectiv
 
 Model Comparison:
 
-Both Decision Tree and Random Forest models benefit from the inclusion of diet variables, although the improvements are modest. These models can capture complex interactions between diet and covariates.These findings suggest that dietary factors, in conjunction with covariates, enhance the predictive power of the models, justifying their inclusion in more complex modeling efforts.
+For Lasso, Ridge, Elastic Net, and GBM models, the inclusion of diet-related features and other covariates resulted in a slight improvement in MSE and RMSE. This suggests that adding these additional features helps the models to better predict the outcome variable (BMI Z-score).
+
+The Decision Tree model showed almost no change in performance with the addition of diet-related features and other covariates.
+
+The Ridge Regression model had the lowest MSE (1.288) and RMSE (1.135) with the diet and covariates features, indicating it is the best performing model among those compared.
+
+Both Random Forest and GBM models showed a notable improvement with the inclusion of diet-related features and covariates. The Random Forest model's RMSE decreased from 1.159 to 1.140, and the GBM model's RMSE decreased from 1.149 to 1.138.
 
 ## Chemicals + Covariates
 
@@ -1327,23 +1286,35 @@ cat("Chemical + Covariates Elastic Net MSE:", mse_enet, "\n")
 cat("Chemical + Covariates Elastic Net RMSE:", rmse_enet, "\n")
 ```
 
-Lasso and Ridge Regression: Both models show marked improvements, indicating that chemical variables are highly predictive.
-
 ### Decision Tree
 
 ```{r}
 fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
+
 rpart.plot(fit_tree)
 
-tree_predictions <- predict(fit_tree, newdata = test_data)
-mse_tree <- mean((y_test - tree_predictions)^2)
-rmse_tree <- sqrt(mse_tree)
+printcp(fit_tree)
+plotcp(fit_tree)
 
-cat("Chemical + Covariates Decision Tree MSE:", mse_tree, "\n")
-cat("Chemical + Covariates Decision Tree RMSE:", rmse_tree, "\n")
+optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
+
+pruned_tree <- prune(fit_tree, cp = optimal_cp)
+
+rpart.plot(pruned_tree)
+
+pruned_tree_predictions <- predict(pruned_tree, newdata = test_data)
+mse_pruned_tree <- mean((test_data$hs_zbmi_who - pruned_tree_predictions)^2)
+rmse_pruned_tree <- sqrt(mse_pruned_tree)
+
+cat("Pruned Decision Tree MSE:", mse_pruned_tree, "\n")
+cat("Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-The Decision Tree model benefits from chemical variables, though the improvements are more modest compared to the other models.
+The pruned decision tree diagram illustrates how the model makes splits based on chemical exposure variables like hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, hs_dde_cadj_Log2, and hs_mnbp_cadj_Log2.
+
+The first split is on hs_pcb170_cadj_Log2 with a threshold of 1.2, indicating that this chemical exposure level is a critical factor in predicting BMI Z-score.
+
+Subsequent splits further refine the predictions based on other chemical exposures, highlighting the importance of these factors in the model.
 
 ### Random Forest
 
@@ -1358,6 +1329,8 @@ rmse_rf <- sqrt(mse_rf)
 cat("Chemical + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Chemical + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
+
+The features such as hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, and hs_dde_cadj_Log2 are among the top predictors, indicating that these chemical exposures are significant contributors to the model's predictions.
 
 ### GBM
 
@@ -1374,12 +1347,12 @@ cat("Chemical + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Chemical + Covariates GBM RMSE:", rmse_gbm, "\n")
 ```
 
-The GBM model shows substantial improvement, with MSE decreasing from 1.262 to 1.129 and RMSE from 1.124 to 1.062. The GBM model also benefits significantly from the inclusion of chemical variables, showcasing its effectiveness in leveraging additional predictors.
+The significant reduction in MSE and RMSE with the inclusion of chemical exposures indicates that these factors are crucial for accurately predicting BMI Z-score. The GBM model benefits from these additional features, highlighting their predictive power.
 
 ## Diet + Chemical + Covariates
 
 ```{r}
-covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+covariates_selected <- c("hs_child_age_None", "e3_sex_None", "e3_yearbir_None")
 diet_selected <- c(
   "h_bfdur_Ter", "hs_bakery_prod_Ter", "hs_break_cer_Ter", "hs_dairy_Ter",
   "hs_fastfood_Ter", "hs_org_food_Ter", "hs_proc_meat_Ter", "hs_total_fish_Ter",
@@ -1475,24 +1448,34 @@ cat("Group Elastic Net MSE:", mse_group_enet, "\n")
 cat("Group Elastic Net RMSE:", rmse_group_enet, "\n")
 ```
 
-Lasso and Ridge Regression: These models show marked improvements, suggesting that the combined diet and chemical variables significantly enhance predictive power.
-
 ### Decision Tree
 
 ```{r}
 set.seed(101)
 fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
+
 rpart.plot(fit_tree)
 
-tree_predictions <- predict(fit_tree, newdata = test_data)
-mse_tree <- mean((y_test - tree_predictions)^2)
-rmse_tree <- sqrt(mse_tree)
+printcp(fit_tree)
+plotcp(fit_tree)
 
-cat("Diet + Chemical + Covariates Decision Tree MSE:", mse_tree, "\n")
-cat("Diet + Chemical + Covariates Decision Tree RMSE:", rmse_tree, "\n")
+optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
+
+pruned_tree <- prune(fit_tree, cp = optimal_cp)
+
+rpart.plot(pruned_tree)
+
+pruned_tree_predictions <- predict(pruned_tree, newdata = test_data)
+mse_pruned_tree <- mean((test_data$hs_zbmi_who - pruned_tree_predictions)^2)
+rmse_pruned_tree <- sqrt(mse_pruned_tree)
+
+cat("Pruned Decision Tree MSE:", mse_pruned_tree, "\n")
+cat("Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-The Decision Tree model shows an improvement with the inclusion of diet and chemical variables, with MSE remaining at 1.240 and RMSE at 1.114. However, the change is not as pronounced as in regularization methods.
+The pruned decision tree diagram illustrates how the model splits based on chemical exposure variables like hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, hs_dde_cadj_Log2, and diet-related variables.
+
+Key splits in the tree emphasize the importance of these exposures and dietary factors in predicting BMI Z-score, with the first split on hs_pcb170_cadj_Log2 at 1.2 being particularly important.
 
 ### Random Forest
 
@@ -1510,7 +1493,7 @@ cat("Diet + Chemical + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Diet + Chemical + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
 
-The Random Forest model shows one of the most significant improvements, with MSE dropping from 1.286 to 1.025 and RMSE from 1.134 to 1.012.
+Features such as hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, hs_dde_cadj_Log2, and hs_mnbp_cadj_Log2 are among the top predictors, indicating significant contributions from chemical exposures.
 
 ### GBM
 
@@ -1528,9 +1511,11 @@ cat("Diet + Chemical + Covariates GBM MSE:", mse_gbm, "\n")
 cat("Diet + Chemical + Covariates GBM RMSE:", rmse_gbm, "\n")
 ```
 
-The GBM model also shows significant improvement, with MSE decreasing from 1.262 to 1.128 and RMSE from 1.124 to 1.062.
+The RMSE also showed a notable improvement. This suggests that the model's predictions are more accurate with the inclusion of chemical exposure data and additional diet-related features.
 
 ## Diet + Chemical + Metabolomic + Covariates
+
+In terms of the metabolomic data, the values were excluded since there were too many entries that unable to be imputed by mean or median.
 
 ```{r adding metabolomic, warning = FALSE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
@@ -1551,7 +1536,7 @@ filtered_chem_diet <- codebook %>%
 # specific covariates
 filtered_covariates <- codebook %>%
   filter(domain == "Covariates" & 
-         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "h_cohort", "hs_child_age_None"))
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "hs_child_age_None"))
 
 #specific phenotype variables
 filtered_phenotype <- codebook %>%
@@ -1564,7 +1549,7 @@ combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered
 outcome_and_cov <- cbind(covariates, outcome_BMI)
 outcome_and_cov <- outcome_and_cov[, !duplicated(colnames(outcome_and_cov))]
 outcome_and_cov <- outcome_and_cov %>%
-  dplyr::select(ID, hs_child_age_None, h_cohort, e3_sex_None, e3_yearbir_None, hs_zbmi_who)
+  dplyr::select(ID, hs_child_age_None, e3_sex_None, e3_yearbir_None, hs_zbmi_who)
 #the full chemicals list
 chemicals_specific <- c(
   "hs_cd_c_Log2",
@@ -1605,7 +1590,7 @@ postnatal_diet <- c(
   "hs_total_veg_Ter"
 )
 
-covariates_selected <- c("hs_child_age_None", "h_cohort", "e3_sex_None", "e3_yearbir_None")
+covariates_selected <- c("hs_child_age_None", "e3_sex_None", "e3_yearbir_None")
 
 all_columns <- c(chemicals_specific, postnatal_diet)
 extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
@@ -1692,8 +1677,6 @@ cat("Group Elastic Net MSE:", mse_group_enet, "\n")
 cat("Group Elastic Net RMSE:", rmse_group_enet, "\n")
 ```
 
-Lasso Regression: Shows the most significant improvement, demonstrating the value of the combined variables in predictive modeling.
-
 ### Decision Trees
 
 ```{r}
@@ -1712,16 +1695,26 @@ x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
 y_test <- test_data$hs_zbmi_who
 
 set.seed(101)
-tree_model <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
-rpart.plot(tree_model)
-tree_predictions <- predict(tree_model, newdata = test_data)
-tree_mse <- mean((tree_predictions - y_test)^2)
-rmse_tree <- sqrt(tree_mse)
-cat("Diet + Chemical + Metabolomic + Covariates Decision Tree MSE:", tree_mse, "\n")
-cat("Diet + Chemical + Metabolomic + Covariates Decision Tree RMSE:", rmse_tree, "\n")
-```
+fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
 
-The Decision Tree model shows a higher MSE of 1.545 and RMSE of 1.243 when all variables are included, indicating it may struggle with the complexity introduced by metabolomic data.
+rpart.plot(fit_tree)
+
+printcp(fit_tree)
+plotcp(fit_tree)
+
+optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
+
+pruned_tree <- prune(fit_tree, cp = optimal_cp)
+
+rpart.plot(pruned_tree)
+
+pruned_tree_predictions <- predict(pruned_tree, newdata = test_data)
+mse_pruned_tree <- mean((test_data$hs_zbmi_who - pruned_tree_predictions)^2)
+rmse_pruned_tree <- sqrt(mse_pruned_tree)
+
+cat("Pruned Decision Tree MSE:", mse_pruned_tree, "\n")
+cat("Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
+```
 
 ### Random Forest
 
@@ -1739,8 +1732,6 @@ rmse_rf <- sqrt(rf_mse)
 cat(" Diet + Chemical + Metabolomic + Covariates Random Forest MSE:", rf_mse, "\n")
 cat("Diet + Chemical + Metabolomic + Covariates Random Forest RMSE:", rmse_rf, "\n")
 ```
-
-Continues to perform robustly, though the improvement is not as pronounced as Lasso or GBM.
 
 ### GBM
 
@@ -1768,30 +1759,151 @@ summary(gbm_model)
 
 Including diet, chemical, and metabolomic variables with the covariates leads to the best improvements in model performance, indicating these additional predictors provide substantial predictive value.
 
-The GBM model shows the best performance among the advanced models, with MSE decreasing to 0.889 and RMSE to 0.943, highlighting its ability to effectively leverage a comprehensive set of predictors.
+The GBM model shows the best performance among the advanced models, highlighting its ability to effectively leverage a comprehensive set of predictors.
 
 # Overall Comparison of MSE/RMSE
 
-```{r}
+```{r OVERALL, warning = FALSE}
 results <- data.frame(
   Model = rep(c("Lasso", "Ridge", "Elastic Net", "Decision Tree", "Random Forest", "GBM"), each = 5),
-  Data_Set = rep(c("Baseline", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemicals + Covariates", "Full Model"), 6),
-  MSE = runif(30, min = 0.2, max = 0.5),  # Replace with actual MSE values
-  RMSE = runif(30, min = 0.4, max = 0.7)  # Replace with actual RMSE values
+  Data_Set = rep(c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"), 6),
+  MSE = c(1.327, 1.297, 1.083, 1.087, 0.871,
+          1.327, 1.288, 1.072, 1.086, 0.888,
+          1.327, 1.295, 1.082, 1.089, 0.891,
+          1.319, 1.319, 1.210, 1.187, 1.273,
+          1.342, 1.299, 1.062, 1.050, 1.009,
+          1.320, 1.295, 1.151, 1.150, 0.889),
+  RMSE = c(1.152, 1.139, 1.041, 1.042, 0.933,
+           1.152, 1.135, 1.036, 1.042, 0.942,
+           1.152, 1.138, 1.040, 1.043, 0.944,
+           1.149, 1.148, 1.100, 1.090, 1.128,
+           1.159, 1.140, 1.031, 1.025, 1.005,
+           1.149, 1.138, 1.073, 1.072, 0.943)
 )
 
 mse_plot <- ggplot(results, aes(x = Data_Set, y = MSE, fill = Model)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   labs(title = "Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 rmse_plot <- ggplot(results, aes(x = Data_Set, y = RMSE, fill = Model)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   labs(title = "Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 print(mse_plot)
 print(rmse_plot)
 ```
+
+```{r LASSO, warning = FALSE}
+# filter results for Lasso model
+lasso_results <- subset(results, Model == "Lasso")
+
+mse_lasso_plot <- ggplot(lasso_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Lasso Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_lasso_plot <- ggplot(lasso_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Lasso Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_lasso_plot)
+print(rmse_lasso_plot)
+```
+
+```{r RIDGE, warning = FALSE}
+# filter results for ridge model
+ridge_results <- subset(results, Model == "Ridge")
+
+mse_ridge_plot <- ggplot(ridge_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Ridge Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_ridge_plot <- ggplot(ridge_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Ridge Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_ridge_plot)
+print(rmse_ridge_plot)
+```
+
+```{r ENET, warning = FALSE}
+# filter results for elastic net model
+enet_results <- subset(results, Model == "Elastic Net")
+
+mse_enet_plot <- ggplot(enet_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Elastic Net Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_enet_plot <- ggplot(enet_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Elastic Net Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_enet_plot)
+print(rmse_enet_plot)
+```
+
+```{r DECISION TREE, warning = FALSE}
+# filter results for decision tree model
+tree_results <- subset(results, Model == "Decision Tree")
+
+mse_tree_plot <- ggplot(tree_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Decision Tree Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_tree_plot <- ggplot(lasso_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Decision Tree Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_tree_plot)
+print(rmse_tree_plot)
+```
+
+```{r RANDOM FOREST, warning = FALSE}
+# filter results for random forest model
+rf_results <- subset(results, Model == "Random Forest")
+
+mse_rf_plot <- ggplot(rf_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Random Forest Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_rf_plot <- ggplot(rf_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Random Forest Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_rf_plot)
+print(rmse_rf_plot)
+```
+
+```{r GBM, warning = FALSE}
+# filter results for elastic net model
+gbm_results <- subset(results, Model == "GBM")
+
+mse_gbm_plot <- ggplot(gbm_results, aes(x = Data_Set, y = MSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "GBM Model MSE Comparison", x = "Data Set", y = "Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rmse_gbm_plot <- ggplot(gbm_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "GBM Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(mse_gbm_plot)
+print(rmse_gbm_plot)
+```
+
+
+
+
+
