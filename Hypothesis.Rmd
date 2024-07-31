@@ -623,13 +623,13 @@ x_test_chemicals_only <- as.matrix(chemicals_outcome_cov[test_indices, chemicals
 fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
 fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
 test_mse_without_covariates <- mean((y_test - fit_without_covariates_test)^2)
-
+test_rmse_without_covariates <- sqrt(test_mse_without_covariates)
 plot(fit_without_covariates_train, xvar = "lambda", main = "Coefficients Path (Without Covariates)")
 
 best_lambda <- fit_without_covariates_train$lambda.min  # lambda that minimizes the MSE
 coef(fit_without_covariates_train, s = best_lambda)
 
-cat("Model without Covariates - Test MSE:", test_mse_without_covariates, "\n")
+cat("Model without Covariates - Test RMSE:", test_rmse_without_covariates)
 ```
 
 ```{r selected chemicals, warning=FALSE}
@@ -702,8 +702,8 @@ coef(fit_without_covariates, s = best_lambda)
 
 predictions_without_covariates <- predict(fit_without_covariates, s = "lambda.min", newx = x_diet_test)
 mse_without_covariates <- mean((y_test - predictions_without_covariates)^2)
-
-cat("Model without Covariates - Test MSE:", mse_without_covariates, "\n")
+rmse_without_covariates <- sqrt(mse_without_covariates)
+cat("Model without Covariates - Test RMSE:", rmse_without_covariates)
 ```
 
 ```{r important data diet, warning=FALSE}
@@ -1327,7 +1327,6 @@ rf_predictions <- predict(fit_rf, newdata = test_data)
 mse_rf <- mean((test_data$hs_zbmi_who - rf_predictions)^2)
 rmse_rf <- sqrt(mse_rf)
 
-cat("Diet + Covariates Random Forest MSE:", mse_rf, "\n")
 cat("Diet + Covariates Random Forest RMSE:", rmse_rf, "\n")
 
 rf_model <- train(
@@ -1341,7 +1340,6 @@ rf_predictions_cv <- predict(rf_model, x_test)
 mse_rf_cv <- mean((y_test - rf_predictions_cv)^2)
 rmse_rf_cv <- sqrt(mse_rf_cv)
 
-cat("10-Fold CV Random Forest MSE:", mse_rf_cv, "\n")
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
@@ -1754,7 +1752,7 @@ cat("Group LASSO RMSE with 10-fold CV:", rmse_group_lasso, "\n")
 
 The cross-validated RMSE is 1.031, showing consistency in performance across different data subsets.
 
-Significant Variables:
+**Significant Variables:**
 
 -   e3_yearbir_None2009: The positive coefficient (0.349) suggests that being born in 2009 is associated with an increase in the BMI Z-score.
 
@@ -2164,9 +2162,9 @@ if (length(group_indices) < ncol(x_train)) {
   group_indices <- c(group_indices, rep(5, ncol(x_train) - length(group_indices)))
 }
 
-length(group_indices) == ncol(x_train)  # This should be TRUE
+length(group_indices) == ncol(x_train)  # this should be TRUE
 
-# Fit group lasso model
+# fit group lasso model
 set.seed(101)
 group_lasso_model <- grpreg(x_train, y_train, group = group_indices, penalty = "grLasso", penalty.factor = penalty_factors, family = "gaussian")
 
@@ -2453,7 +2451,7 @@ GBM performs well with RMSE values close to the penalized regression models, par
 
 Group Lasso has the lowest RMSE values, indicating the best predictive performance and effective variable selection. Group Ridge, Group Elastic Net, and GBM also perform well, with RMSE values close to Group Lasso. These models offer a balance between prediction accuracy and interpretability. Decision Trees and Random Forests are less effective for this particular dataset and problem.
 
-# Overall Comparison of MSE/RMSE
+# Overall Comparison of RMSE
 
 ```{r OVERALL, warning = FALSE}
 results <- data.frame(
