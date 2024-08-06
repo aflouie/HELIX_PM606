@@ -71,15 +71,17 @@ These studies collectively illustrate the critical role of environmental exposur
 
 ## Hypothesis
 
-How are postnatal environmental exposures, specifically those found in household products and dietary intake, along with specific serum metabolomics profiles, associated with the BMI Z-score of children aged 6-11 years?  Specifically, which metabolites associated with chemical exposures and dietary patterns serve as biomarkers for the risk of developing obesity, while controlling for age and other relevant covariates?
+How are postnatal environmental exposures, specifically those found in household products and dietary intake, along with specific serum metabolomics profiles, associated with the BMI Z-score of children aged 6-11 years? Specifically, which metabolites associated with chemical exposures and dietary patterns serve as biomarkers for the risk of developing obesity, while controlling for age and other relevant covariates?
 
 # Methods
 
 ## Data Description
 
-This study utilizes data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between chemical exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
+The [HELIX (Human Early-Life Exposome, Vrijheid, M. et al., 2014)](https://www.projecthelix.eu/index.php/es/data-inventory) project investigates the comprehensive environmental exposures (exposome) from conception through childhood. It combines data on various environmental hazards affecting mothers and children, examining their impacts on health, growth, and development. Utilizing six European birth cohort studies (BiB, EDEN, INMA, KANC, MoBa, Rhea), HELIX integrates extensive existing data with new high-tech measurements of chemical, physical, and molecular exposures. Methods include smartphone-based pollution tracking and advanced lab techniques for detecting chemical contaminants. The study comprises three levels: a broad cohort of 31,472 mother-child pairs, a subcohort of 1,301 pairs with detailed biomarker and health outcome data at ages 6-11, and repeat-sampling studies involving 150 children and 150 pregnant women for personal exposure data collection. This multilevel approach helps in understanding the cumulative effect of various exposures on disease risk.
 
-In terms of adding the metabolomic data with the rest of the dataset, 103 (about 8% of the data) values were excluded. Some data entries had no information when combined with the metabolomic data and therefore could not be imputed with the mean or median. While this may pose as a risk, including rows with missing values can lead to inaccurate or biased results. This is relevant since many statistical methods and machine learning algorithms require complete data to function correctly. The proportion of missing data (8%) is relatively small, making the exclusion of these rows a feasible approach. This minimizes the loss of valuable information while still maintaining a dataset of sufficient size for meaningful analysis.
+This project utilizes data from the subcohort of 1301 mother-child pairs in the HELIX study for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between chemical exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, or socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
+
+In terms of adding the [metabolomic serum data](https://www.projecthelix.eu/images/HELIX_serum_metabol_DataSummary.pdf) with the rest of the dataset, 103 (about 8% of the data) values were excluded. Some data entries had no information when combined with the metabolomic data and therefore could not be imputed with the mean or median. While this may pose as a risk, including rows with missing values can lead to inaccurate or biased results. This is relevant since many statistical methods and machine learning algorithms require complete data to function correctly. The proportion of missing data of 8% is relatively small, making the exclusion of these rows a feasible approach. This minimizes the loss of valuable information while still maintaining a dataset of sufficient size for meaningful analysis.
 
 ```{r load data and codebook, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
@@ -1539,7 +1541,7 @@ The GBM model's relative influence plot shows that polychlorinated biphenyl-170 
 
 ### **Model Comparison:**
 
-Overall, the models for chemical and covariates data highlight the significant role of specific chemicals in predicting outcomes.  The random forest model, while also effective, showed slightly higher RMSEs. Decision tree models benefited from pruning, which improved their performance, but still lagged behind the ensemble methods. The LASSO, ridge, and elastic net models provided useful insights into variable importance but had higher RMSEs compared to the GBM, reflecting the trade-off between interpretability and predictive power. Ridge regression and elastic net provide lower RMSE values, suggesting better generalization compared to LASSO.
+Overall, the models for chemical and covariates data highlight the significant role of specific chemicals in predicting outcomes. The random forest model, while also effective, showed slightly higher RMSEs. Decision tree models benefited from pruning, which improved their performance, but still lagged behind the ensemble methods. The LASSO, ridge, and elastic net models provided useful insights into variable importance but had higher RMSEs compared to the GBM, reflecting the trade-off between interpretability and predictive power. Ridge regression and elastic net provide lower RMSE values, suggesting better generalization compared to LASSO.
 
 In summary, the models consistently identified polychlorinated biphenyl-170, polybrominated diphenyl ether-153, dichlorodiphenyldichloroethylene, copper, and perfluorooctanoic acid as crucial variables for predicting BMI Z-scores.
 
@@ -2211,7 +2213,7 @@ rmse_rf_cv <- sqrt(mse_rf_cv)
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-The IncNodePurity values indicate that "hs_pcb170_cadj_Log2" is the most influential variable, followed by "metab_95," "hs_pcb153_cadj_Log2," and "metab_8." The model has an RMSE of 1.0047 for the training set and 1.0048 for the 10-fold cross-validation, suggesting a consistent performance with minimal overfitting. Comparing the pruned and unpruned models, the pruned model with cross-validation resulted in a lower RMSE, indicating better generalization and reduced complexity without sacrificing accuracy. 
+The IncNodePurity values indicate that "hs_pcb170_cadj_Log2" is the most influential variable, followed by "metab_95," "hs_pcb153_cadj_Log2," and "metab_8." The model has an RMSE of 1.0047 for the training set and 1.0048 for the 10-fold cross-validation, suggesting a consistent performance with minimal overfitting. Comparing the pruned and unpruned models, the pruned model with cross-validation resulted in a lower RMSE, indicating better generalization and reduced complexity without sacrificing accuracy.
 
 ### GBM
 
@@ -2280,6 +2282,12 @@ Caspersen, I. H. et al. (2016). Determinants of persistent organic pollutant con
 Junge, K. M. et al. (2018). MEST mediates the impact of prenatal bisphenol A exposure on long-term body weight development. Clinical Epigenetics, 10(1), 58. DOI: [10.1186/s13148-018-0478-z](https://doi.org/10.1186/s13148-018-0478-z){.uri}
 
 Harley, K. G. et al. (2013). Association of prenatal and childhood PBDE and PCB exposures with timing of puberty in boys and girls. Environmental International, 51, 264-272. DOI: [10.1016/j.envint.2012.10.007](https://doi.org/10.1016/j.envint.2012.10.007){.uri}
+
+Project HELIX. (n.d.). *Data Inventory*. Retrieved from <https://www.projecthelix.eu/index.php/es/data-inventory>
+
+Siskos, A. P. et al. (2017). *HELIX-Serum Metabolomics*. Retrieved from <https://www.projecthelix.eu/images/HELIX_serum_metabol_DataSummary.pdf>
+
+Vrijheid, M. et al. (2014). Early-life environmental exposures and childhood health: The HELIX project. *Environmental Health Perspectives, 122*(10), 995-1003. DOI: [10.1289/ehp.1307204](https://doi.org/10.1289/ehp.1307204)
 
 # Appendices
 
