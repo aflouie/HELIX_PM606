@@ -108,9 +108,6 @@ metabol_serum_transposed$ID <- as.integer(rownames(metabol_serum_transposed))
 # add the ID column to the first position
 metabol_serum_transposed <- metabol_serum_transposed[, c("ID", setdiff(names(metabol_serum_transposed), "ID"))]
 
-# ID is the first column, and the layout is preserved
-kable(head(metabol_serum_transposed), align = "c", digits = 2, format = "pipe")
-
 # specific covariates
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
 filtered_chem_diet <- codebook %>%
@@ -526,7 +523,6 @@ chemicals_outcome_cov <- cbind(outcome_cov, all_chemicals)
 diet_outcome_cov <- cbind(outcome_cov, all_diet)
 
 interested_data <- cbind(outcome_cov, extracted_exposome)
-head(interested_data)
 ```
 
 ### Chemicals Data
@@ -549,7 +545,7 @@ x_train_chemicals_only <- as.matrix(chemicals_outcome_cov[train_indices, chemica
 x_test_chemicals_only <- as.matrix(chemicals_outcome_cov[test_indices, chemicals_full])
 ```
 
-```{r enet, warning=FALSE}
+```{r enet selection chemicals, warning=FALSE}
 # ELASTIC NET
 fit_without_covariates_train <- cv.glmnet(x_train_chemicals_only, y_train, alpha = 0.5, family = "gaussian")
 fit_without_covariates_test <- predict(fit_without_covariates_train, s = "lambda.min", newx = x_test_chemicals_only)
@@ -622,7 +618,7 @@ y_train <- as.numeric(diet_outcome_cov$hs_zbmi_who[train_indices])
 y_test <- as.numeric(diet_outcome_cov$hs_zbmi_who[test_indices])
 ```
 
-```{r diet enet, warning=FALSE}
+```{r diet selection enet, warning=FALSE}
 fit_without_covariates <- cv.glmnet(x_diet_train, y_train, alpha = 0.5, family = "gaussian")
 fit_without_covariates
 
