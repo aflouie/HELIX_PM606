@@ -71,7 +71,7 @@ These studies collectively illustrate the critical role of environmental exposur
 
 ## Hypothesis
 
-How are postnatal environmental exposures, specifically those found in household products and dietary intake, along with specific serum metabolomics profiles, associated with the BMI Z-score of children aged 6-11 years? Specifically, do higher concentrations of certain serum metabolites, indicative of exposure to chemical classes or metals, correlate with variations in BMI Z-score when controlling for age and other relevant covariates? Additionally, can these metabolites serve as biomarkers for the risk of developing obesity in children?
+How are postnatal environmental exposures, specifically those found in household products and dietary intake, along with specific serum metabolomics profiles, associated with the BMI Z-score of children aged 6-11 years?  Specifically, which metabolites associated with chemical exposures and dietary patterns serve as biomarkers for the risk of developing obesity, while controlling for age and other relevant covariates?
 
 # Methods
 
