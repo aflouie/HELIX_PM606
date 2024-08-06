@@ -1,7 +1,7 @@
 ---
-title: "PM606 Project"
+title: "Analysis of Environmental Exposures, Diet, and Metabolomics on Child BMI Z-Score"
 author: "Allison Louie"
-date: "2024-07-30"
+date: "2024-08-05"
 output:
   html_document:
     toc: true
@@ -45,29 +45,27 @@ options(warn=-1)
 
 # Abstract
 
-**Background**: Childhood obesity is a growing public health concern with significant implications for physical and mental health. Understanding the multifactorial influences on childhood Body Mass Index (BMI) is crucial for developing effective interventions and policies.
+**Background**: Identifying the key predictors of childhood Body Mass Index (BMI) is crucial for informing effective health interventions, given the significant impacts of diet, chemical exposures, and metabolomic profiles on health outcomes. Understanding the multifactorial influences is crucial for developing effective interventions and policies.
 
 **Objective**: This study aims to predict childhood BMI Z-scores by integrating comprehensive data on postnatal diet, chemical exposures, and serum metabolomics, using advanced statistical models.
 
-**Methods**: Data from the HELIX study, including 1301 mother-child pairs aged 6-11 years, were analyzed. Various modeling approaches, including LASSO, ridge, elastic net, decision tree, random forest, and gradient boosting machine (GBM), were employed to predict BMI Z-scores. Models were evaluated based on their Root Mean Squared Error (RMSE) and the significance of the predictors identified.
+**Methods**: Data from the HELIX study, including 1301 mother-child pairs aged 6-11 years, were analyzed. Data was split into training (70%) and test (30%) sets. Various modeling approaches, including LASSO, ridge, elastic net, decision tree, random forest, and gradient boosting machine (GBM), with 10-fold cross-validation used to evaluate model performance and ensure robustness. Models were evaluated based on their Root Mean Squared Error (RMSE) and the significance of the predictors identified.
 
-**Results**: The results demonstrate that models incorporating a comprehensive set of variables (diet, chemicals, metabolomics, and covariates) consistently outperformed those with fewer variables. Specifically, the Group Lasso model achieved the lowest Root Mean Squared Error (RMSE) of 0.875 with 10-fold cross-validation, followed closely by Group Ridge (RMSE: 0.885) and Group Elastic Net (RMSE: 0.885). Ensemble methods such as Random Forest and GBM also showed robust performance, with GBM yielding an RMSE of 0.954.
+**Results**: The results demonstrate that models incorporating a comprehensive set of variables (diet, chemicals, metabolomics, and covariates) consistently outperformed those with fewer variables. The inclusion of metabolomic data significantly improved model performance. GBM model with all variables demonstrated the best performance with a cross-validated RMSE of 0.9537, followed closely by the group LASSO model with an RMSE of 0.8748. Key predictors identified across the models included age and sex, specific metabolites such as metab_161 (coefficient 3.5751), metab_95 (1.3657), and metab_160 (-3.2241), along with chemical exposures like polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2). The random forest model also showed strong performance with an RMSE of 1.0047.
 
-Key variables identified across the models include demographic factors such as age and sex, dietary factors like breastfeeding duration and intake of bakery products, and chemical exposures including hs_pcb170_cadj_Log2 and hs_pbde153_cadj_Log2. The addition of metabolomic data significantly enhanced the predictive accuracy, highlighting its potential utility in obesity research.
-
-**Conclusion**: The findings highlight the critical role of chemical exposures and metabolomic profiles in determining childhood BMI. Incorporating diverse data sources significantly enhances model performance, providing a holistic understanding of the determinants of childhood obesity. Future research should focus on improving data quality, exploring additional covariates, and assessing the generalizability of the models to different populations.
+**Conclusion**: Integrating demographic, dietary, chemical, and metabolomic data provides robust predictions for BMI in children. Advanced machine learning techniques, particularly GBM and Random Forest, significantly enhance predictive performance. These findings underscore the importance of utilizing diverse data types to understand and address childhood obesity effectively.
 
 # Introduction
 
 ## Background
 
-Research indicates that postnatal exposure to endocrine-disrupting chemicals (EDCs) such as phthalates, bisphenol A (BPA), and polychlorinated biphenyls (PCBs) can significantly influence body weight and metabolic health ([Junge et al., 2018](https://clinicalepigeneticsjournal.biomedcentral.com/articles/10.1186/s13148-018-0478-z)). These chemicals, commonly found in household products and absorbed through dietary intake, are linked to detrimental effects on body weight and metabolic health in children. This hormonal interference can lead to an increased body mass index (BMI) in children, suggesting a potential pathway through which exposure to these chemicals contributes to the development of obesity.
+The impact of postnatal environmental exposures on childhood health outcomes is critical for understanding long-term health implications in children. Understanding the multifactorial influences on childhood BMI is crucial for developing effective interventions and policies to combat this issue. This study aims to understand the impact of postnatal environmental exposures, dietary habits, and covariates on the BMI Z-score of children aged 6-11 years.
 
-A longitudinal study on Japanese children examined the impact of postnatal exposure (first two years of life) to p,p’*-*dichlorodiphenyltrichloroethane (p,p’*-*DDT) and p,p’*-*dichlorodiphenyldichloroethylene (p,p’*-*DDE) through breastfeeding ([Plouffe et al., 2020](https://ehjournal.biomedcentral.com/articles/10.1186/s12940-020-00603-z)). The findings revealed that higher levels of these chemicals in breast milk were associated with increased BMI at 42 months of age. DDT and DDE may interfere with hormonal pathways related to growth and development. These chemicals can mimic or disrupt hormones that regulate metabolism and fat accumulation. This study highlights the importance of understanding how persistent organic pollutants can affect early childhood growth and development.
+Research indicates that postnatal exposure to endocrine-disrupting chemicals (EDCs) such as phthalates, bisphenol A (BPA), and polychlorinated biphenyls (PCBs) can significantly influence body weight and metabolic health ([Junge et al., 2018](https://clinicalepigeneticsjournal.biomedcentral.com/articles/10.1186/s13148-018-0478-z)). These chemicals, commonly found in household products and absorbed through dietary intake, are linked to detrimental effects on metabolic health in children. This hormonal interference can lead to an increased body mass index (BMI) in children, suggesting a potential pathway through which exposure to these chemicals contributes to the development of obesity.
 
 The study by [Harley et al. (2013)](https://pubmed.ncbi.nlm.nih.gov/23416456/) investigates the association between prenatal and postnatal Bisphenol A (BPA) exposure and various body composition metrics in children aged 9 years from the CHAMACOS cohort. The study found that higher prenatal BPA exposure was linked to a decrease in BMI and body fat percentages in girls but not boys, suggesting sex-specific effects. Conversely, BPA levels measured at age 9 were positively associated with increased adiposity in both genders, highlighting the different impacts of exposure timing on childhood development.
 
-The 2022 study [2022 study by Uldbjerg et al.](https://academic.oup.com/humupd/article/28/5/687/6573218) explored the effects of combined exposures to multiple EDCs, suggesting that mixtures of these chemicals can have additive or synergistic effects on BMI and obesity risk. Humans are typically exposed to a mixture of chemicals rather than individual EDCs, making it crucial to understand how these mixtures might interact. The research highlighted that the interaction between different EDCs can lead to additive (where the effects simply add up) or even synergistic (where the combined effect is greater than the sum of their separate effects) outcomes. These interactions can significantly amplify the risk factors associated with obesity and metabolic disorders in children. The dose-response relationship found that even low-level exposure to multiple EDCs could result in significant health impacts due to their combined effects.
+A [2016 study by Caspersen et al.](https://www.sciencedirect.com/science/article/abs/pii/S0013935115301821?via%3Dihub) investigated the determinants of plasma levels of polychlorinated biphenyls (PCBs), brominated flame retardants, and organochlorine pesticides in pregnant women and 3-year-old children. In pregnant women, significant predictors of increased plasma concentrations of persistent organic pollutants (POPs) included age, low parity, and low pre-pregnant BMI. With the 3-year-olds, prolonged breastfeeding duration was a major determinant of increased POP concentrations. Diet was a significant predictor of PCB levels in children. By examining environmental exposures and their influence on BMI, this project aims to extend the understanding of how specific dietary patterns and chemical exposures during early childhood contribute to BMI variations, aligning with the findings that diet significantly predicts POP levels in children.
 
 These studies collectively illustrate the critical role of environmental exposures in shaping metabolic health outcomes in children, highlighting the necessity for ongoing research and policy intervention to mitigate these risks.
 
@@ -81,7 +79,7 @@ How are postnatal environmental exposures, specifically those found in household
 
 This study utilizes data from the subcohort of 1301 mother-child pairs in the HELIX study, who are which aged 6-11 years for whom complete exposure and outcome data were available. Exposure data included detailed dietary records after pregnancy and concentrations of various chemicals in child blood samples. There are categorical and numerical variables, which will include both demographic details and biochemical measurements. This dataset allows for robust statistical analysis to identify potential associations between chemical exposure and changes in BMI Z-scores, considering confounding factors such as age, gender, and socioeconomic status. There are no missing data so there is not need to impute the information. Child BMI Z-scores were calculated based on WHO growth standards.
 
-However in terms of the metabolomic data, the values were excluded since there were too many entries. This was preferred over being imputed by mean or median since having any entries that had no metabolomic serum information would have the same values.
+In terms of adding the metabolomic data with the rest of the dataset, 103 (about 8% of the data) values were excluded. Some data entries had no information when combined with the metabolomic data and therefore could not be imputed with the mean or median. While this may pose as a risk, including rows with missing values can lead to inaccurate or biased results. This is relevant since many statistical methods and machine learning algorithms require complete data to function correctly. The proportion of missing data (8%) is relatively small, making the exclusion of these rows a feasible approach. This minimizes the loss of valuable information while still maintaining a dataset of sufficient size for meaningful analysis.
 
 ```{r load data and codebook, echo=TRUE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
@@ -100,8 +98,109 @@ filtered_phenotype <- codebook %>%
 
 # combining all necessary variables together
 combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered_phenotype)
-kable(combined_codebook, align = "c", format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
+```
+
+```{r metabolomic data added, warning = FALSE}
+load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
+metabol_serum_transposed <- as.data.frame(t(metabol_serum.d))
+metabol_serum_transposed$ID <- as.integer(rownames(metabol_serum_transposed))
+
+# add the ID column to the first position
+metabol_serum_transposed <- metabol_serum_transposed[, c("ID", setdiff(names(metabol_serum_transposed), "ID"))]
+
+# ID is the first column, and the layout is preserved
+kable(head(metabol_serum_transposed), align = "c", digits = 2, format = "pipe")
+
+# specific covariates
+load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
+filtered_chem_diet <- codebook %>%
+  filter(domain %in% c("Chemicals", "Lifestyles") & period == "Postnatal" & subfamily != "Allergens")
+
+# specific covariates
+filtered_covariates <- codebook %>%
+  filter(domain == "Covariates" & 
+         variable_name %in% c("ID", "e3_sex_None", "e3_yearbir_None", "hs_child_age_None"))
+
+#specific phenotype variables
+filtered_phenotype <- codebook %>%
+  filter(domain == "Phenotype" & 
+         variable_name %in% c("hs_zbmi_who"))
+
+# combining all necessary variables together
+combined_codebook <- bind_rows(filtered_chem_diet, filtered_covariates, filtered_phenotype)
+
+outcome_BMI <- phenotype %>% 
+  dplyr::select(hs_zbmi_who)
+
+outcome_and_cov <- cbind(covariates, outcome_BMI)
+outcome_and_cov <- outcome_and_cov[, !duplicated(colnames(outcome_and_cov))]
+outcome_and_cov <- outcome_and_cov %>%
+  dplyr::select(ID, hs_child_age_None, e3_sex_None, e3_yearbir_None, hs_zbmi_who)
+#the full chemicals list
+chemicals_specific <- c(
+  "hs_cd_c_Log2",
+  "hs_co_c_Log2",
+  "hs_cs_c_Log2",
+  "hs_cu_c_Log2",
+  "hs_hg_c_Log2",
+  "hs_mo_c_Log2",
+  "hs_pb_c_Log2",
+  "hs_dde_cadj_Log2",
+  "hs_pcb153_cadj_Log2",
+  "hs_pcb170_cadj_Log2",
+  "hs_dep_cadj_Log2",
+  "hs_pbde153_cadj_Log2",
+  "hs_pfhxs_c_Log2",
+  "hs_pfoa_c_Log2",
+  "hs_pfos_c_Log2",
+  "hs_prpa_cadj_Log2",
+  "hs_mbzp_cadj_Log2",
+  "hs_mibp_cadj_Log2",
+  "hs_mnbp_cadj_Log2"
+)
+
+#postnatal diet for child
+postnatal_diet <- c(
+  "h_bfdur_Ter",
+  "hs_bakery_prod_Ter",
+  "hs_dairy_Ter",
+  "hs_fastfood_Ter",
+  "hs_org_food_Ter",
+  "hs_readymade_Ter",
+  "hs_total_bread_Ter",
+  "hs_total_fish_Ter",
+  "hs_total_fruits_Ter",
+  "hs_total_lipids_Ter",
+  "hs_total_potatoes_Ter",
+  "hs_total_sweets_Ter",
+  "hs_total_veg_Ter"
+)
+
+covariates_selected <- c("hs_child_age_None", "e3_sex_None", "e3_yearbir_None")
+
+all_columns <- c(chemicals_specific, postnatal_diet)
+extracted_exposome <- exposome %>% dplyr::select(all_of(all_columns))
+
+selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
+
+# ID is the common identifier in both datasets
+combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
+
+selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
+
+# the number of NAs in each column
+missing_summary <- sapply(selected_metabolomics_data, function(x) sum(is.na(x)))
+
+missing_summary_df <- data.frame(
+  Variable = names(missing_summary),
+  Missing_Count = missing_summary,
+  Missing_Percentage = (missing_summary / nrow(selected_metabolomics_data)) * 100
+)
+
+missing_summary_df <- missing_summary_df %>% filter(Missing_Count > 0)
+missing_summary_df
+
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit() #gets rid of 103 rows from original (8% of original data) since there are areas that have NA throughout metabol_#
 ```
 
 ## Data Summary for Exposures, Covariates, and Outcome {.tabset}
@@ -155,99 +254,47 @@ dietary_exposome <- dplyr::select(exposome, all_of(dietary_exposures))
 summarytools::view(dfSummary(dietary_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-```{r categorical diet, warning=FALSE}
-categorical_diet <- dietary_exposome %>% 
-  dplyr::select(where(is.factor))
-
-categorical_diet_long <- pivot_longer(
-  categorical_diet,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_categorical_vars <- unique(categorical_diet_long$variable)
-categorical_plots <- lapply(unique_categorical_vars, function(var) {
-  data <- filter(categorical_diet_long, variable == var)
-  
-  p <- ggplot(data, aes(x = value, fill = value)) +
-    geom_bar(stat = "count") +
-    labs(title = paste("Distribution of", var), x = var, y = "Count")
-  
-  print(p)
-  return(p)
-})
-```
-
-Breastfeeding Duration: Majority of observations are in the highest duration category, suggesting longer breastfeeding periods are common.
-
-Bakery Products: Shows a relatively even distribution across the three categories, indicating varied consumption levels of bakery products among participants.
-
-Breakfast Cereal: The highest category of cereal consumption is the most common, suggesting a preference for or greater consumption of cereals.
-
-Dairy: Shows a fairly even distribution across all categories, indicating a uniform consumption pattern of dairy products.
-
-Fast Food: Most participants fall into the middle category, indicating moderate consumption of fast food.
-
-Organic Food: Most participants either consume a lot of or no organic food, with fewer in the middle range.
-
-Processed Meat: Consumption levels are fairly evenly distributed, indicating varied dietary habits regarding processed meats.
-
-Bread: Distribution shows a significant leaning towards higher bread consumption.
-
-Cereal: Even distribution across categories suggests varied cereal consumption habits.
-
-Fish and Seafood: Even distribution across categories, indicating varied consumption of fish and seafood.
-
-Fruits: High fruit consumption is the most common, with fewer participants in the lowest category.
-
-Added Fats: More participants consume added fats at the lowest and highest levels, with fewer in the middle.
-
-Sweets: High consumption of sweets is the most common, indicating a preference for or higher access to sugary foods.
-
-Vegetables: Most participants consume a high amount of vegetables.
-
 ### Data Summary Exposures: Chemicals
 
 This study included a comprehensive assessment of various chemical exposures to understand their impact on childhood BMI Z-scores. The specific chemical exposures selected for analysis were as follows:
 
 -   `hs_cd_c_Log2`: Cadmium concentration
 
--   **`hs_co_c_Log2`**: Cobalt concentration
+-   `hs_co_c_Log2`: Cobalt concentration
 
--   **`hs_cs_c_Log2`**: Cesium concentration
+-   `hs_cs_c_Log2`: Cesium concentration
 
--   **`hs_cu_c_Log2`**: Copper concentration
+-   `hs_cu_c_Log2`: Copper concentration
 
--   **`hs_hg_c_Log2`**: Mercury concentration
+-   `hs_hg_c_Log2`: Mercury concentration
 
--   **`hs_mo_c_Log2`**: Molybdenum concentration
+-   `hs_mo_c_Log2`: Molybdenum concentration
 
--   **`hs_pb_c_Log2`**: Lead concentration
+-   `hs_pb_c_Log2`: Lead concentration
 
--   **`hs_dde_cadj_Log2`**: DDE (a breakdown product of DDT) concentration, adjusted
+-   `hs_dde_cadj_Log2`: DDE (a breakdown product of DDT) concentration, adjusted
 
--   **`hs_pcb153_cadj_Log2`**: PCB 153 concentration, adjusted
+-   `hs_pcb153_cadj_Log2`: PCB 153 concentration, adjusted
 
--   **`hs_pcb170_cadj_Log2`**: PCB 170 concentration, adjusted
+-   `hs_pcb170_cadj_Log2`: PCB 170 concentration, adjusted
 
--   **`hs_dep_cadj_Log2`**: DEP (Diethyl phthalate) concentration, adjusted
+-   `hs_dep_cadj_Log2`: DEP (Diethyl phthalate) concentration, adjusted
 
--   **`hs_pbde153_cadj_Log2`**: PBDE 153 (Polybrominated diphenyl ether) concentration, adjusted
+-   `hs_pbde153_cadj_Log2`: PBDE 153 (Polybrominated diphenyl ether) concentration, adjusted
 
--   **`hs_pfhxs_c_Log2`**: PFHxS (Perfluorohexane sulfonic acid) concentration
+-   `hs_pfhxs_c_Log2`: PFHxS (Perfluorohexane sulfonic acid) concentration
 
--   **`hs_pfoa_c_Log2`**: PFOA (Perfluorooctanoic acid) concentration
+-   `hs_pfoa_c_Log2`: PFOA (Perfluorooctanoic acid) concentration
 
--   **`hs_pfos_c_Log2`**: PFOS (Perfluorooctane sulfonic acid) concentration
+-   `hs_pfos_c_Log2`: PFOS (Perfluorooctane sulfonic acid) concentration
 
--   **`hs_prpa_cadj_Log2`**: PRPA (Propargyl alcohol) concentration, adjusted
+-   `hs_prpa_cadj_Log2`: PRPA (Propargyl alcohol) concentration, adjusted
 
--   **`hs_mbzp_cadj_Log2`**: MBzP (Mono-benzyl phthalate) concentration, adjusted
+-   `hs_mbzp_cadj_Log2`: MBzP (Mono-benzyl phthalate) concentration, adjusted
 
--   **`hs_mibp_cadj_Log2`**: MiBP (Mono-isobutyl phthalate) concentration, adjusted
+-   `hs_mibp_cadj_Log2`: MiBP (Mono-isobutyl phthalate) concentration, adjusted
 
--   **`hs_mnbp_cadj_Log2`**: MnBP (Mono-n-butyl phthalate) concentration, adjusted
+-   `hs_mnbp_cadj_Log2`: MnBP (Mono-n-butyl phthalate) concentration, adjusted
 
 ```{r Chemicals summary, attr.output='style="max-height: 100px;"',}
 # specific chemical exposures
@@ -277,68 +324,6 @@ chemical_exposome <- dplyr::select(exposome, all_of(chemical_exposures))
 summarytools::view(dfSummary(chemical_exposome, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
 
-```{r numeric chemicals, warning=FALSE}
-#separate numeric and categorical data
-numeric_chemical <- chemical_exposome %>% 
-  dplyr::select(where(is.numeric))
-
-numeric_chemical_long <- pivot_longer(
-  numeric_chemical,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_numerical_vars <- unique(numeric_chemical_long$variable)
-
-num_plots <- lapply(unique_numerical_vars, function(var) {
-  data <- filter(numeric_chemical_long, variable == var)
-  p <- ggplot(data, aes(x = value)) +
-    geom_histogram(bins = 30, fill = "blue") +
-    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
-  print(p)
-  return(p)
-})
-```
-
-Cadmium (hs_cd_c_Log2): The histogram for cadmium exposure shows a relatively symmetric distribution centered around 4 on the log2 scale. Most values range from approximately 3 to 5, with few outliers.
-
-Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew, peaking around 3.5.
-
-Cesium (hs_cs_c_Log2): Exhibits a right-skewed distribution, indicating that most participants have relatively low exposure levels, but a small number have substantially higher exposures. Majority of the data centered around 1.5 to 2.5
-
-Copper (hs_cu_c_Log2): Shows a right-skewed distribution, suggesting that while most individuals have moderate exposure, a few experience significantly higher levels of copper.
-
-Mercury (hs_hg_c_Log2): This distribution is also right-skewed, common for environmental pollutants, where a majority have lower exposure levels, and a minority have high exposure levels.
-
-Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures. Has a sharp peak around 6, indicating that most values fall within a narrow range.
-
-Lead (hs_pb_c_Log2): The distribution is slightly right-skewed, indicating higher exposure levels in a smaller group of the population compared to the majority.
-
-DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population..
-
-PCB 153 (hs_pcb153_cadj_Log2): Has a distribution with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population. Bimodal, indicating two peaks around 2 and 4.
-
-PCB 170 (hs_pcb170_cadj_Log2): This histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
-
-DEP (hs_dep_cadj_Log2): DEP exposure has a sharp peak around 6, indicating a narrow distribution of values.
-
-PBDE 153 (hs_pbde153_cadj_Log2): This histogram shows a bimodal distribution, with peaks around 1 and 4.
-
-PFHxS: Distribution peaks around 5 with a broad spread, indicating variation in PFHxS levels.
-
-PFOA: Shows a peak around 6 with a symmetrical distribution, indicating consistent PFOA levels.
-
-PFOS: Similar to PFOA, the distribution peaks around 6, indicating consistent PFOS levels.
-
-Propyl Paraben (hs_prpa_cadj_Log2): The distribution peaks around 6 with a broad spread, indicating variability in propyl paraben levels.
-
-Monobenzyl Phthalate (hs_mbzp_cadj_Log2): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures. Shows a broad distribution with a peak around 4, indicating variation in monobenzyl phthalate levels. Indicates consistent but varied exposure levels.
-
-Monoisobutyl Phthalate (hs_mibp_cadj_Log2): The distribution is right-skewed, similar to MBZP, but with a smoother decline. This pattern also indicates that while most subjects have lower exposure levels, a few experience significantly higher exposures.
-
-Mono-n-butyl Phthalate (hs_mnbp_cadj_Log2): Peaks around 4, indicating consistent exposure levels with some variation. Few outliers are present.
-
 ### Data Summary Covariates
 
 Covariates were selected on its impact with the postnatal nature of the child. The only exception is sex and year of birth, which was considered as pregnancy. This were used since there are differences amongst gender as well as depending on the child's age and when they are born.
@@ -354,60 +339,6 @@ specific_covariates <- c(
 covariate_data <- dplyr::select(covariates, all_of(specific_covariates))
 summarytools::view(dfSummary(covariate_data, style = 'grid', plain.ascii = FALSE, valid.col = FALSE, headings = FALSE), method = "render")
 ```
-
-```{r covariates numeric, warning=FALSE}
-#separate numeric and categorical data
-numeric_covariates <- covariate_data %>% 
-  dplyr::select(where(is.numeric))
-
-numeric_covariates_long <- pivot_longer(
-  numeric_covariates,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_numerical_vars <- unique(numeric_covariates_long$variable)
-
-num_plots <- lapply(unique_numerical_vars, function(var) {
-  data <- filter(numeric_covariates_long, variable == var)
-  p <- ggplot(data, aes(x = value)) +
-    geom_histogram(bins = 30, fill = "blue") +
-    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
-  print(p)
-  return(p)
-})
-```
-
-Child's Age (hs_child_age): This histogram is multimodal, reflecting several peaks across different ages. This could be indicative of the data collection points or particular age groups being studied.
-
-```{r covariates categorical, warning=FALSE}
-categorical_covariates <- covariate_data %>% 
-  dplyr::select(where(is.factor))
-
-categorical_covariates_long <- pivot_longer(
-  categorical_covariates,
-  cols = everything(),
-  names_to = "variable",
-  values_to = "value"
-)
-
-unique_categorical_vars <- unique(categorical_covariates_long$variable)
-categorical_plots <- lapply(unique_categorical_vars, function(var) {
-  data <- filter(categorical_covariates_long, variable == var)
-  
-  p <- ggplot(data, aes(x = value, fill = value)) +
-    geom_bar(stat = "count") +
-    labs(title = paste("Distribution of", var), x = var, y = "Count")
-  
-  print(p)
-  return(p)
-})
-```
-
-Gender Distribution (e3_sex): The gender distribution is nearly balanced with a slight higher count for males compared to females.
-
-Year of Birth (e3_yearbir): This chart shows that the majority of subjects were born in the later years, with a significant increase in 2009, indicating perhaps a larger recruitment or a specific cohort focus that year.
 
 ### Data Summary Outcome: Phenotype
 
@@ -726,29 +657,7 @@ diet_selected <- c(
 
 ## Statistical Models
 
-To analyze the impact of dietary, chemical, and demographic variables on BMI Z-scores, various statistical models were employed, each chosen for their unique strengths in handling different aspects of the data. These models were analyzed and performed with a 70-30% split in order to train models and predict the performance
-
-LASSO (Least Absolute Shrinkage and Selection Operator) applies L1 regularization to minimize the absolute sum of coefficients. It was used to perform variable selection and regularization, effectively identifying the most significant predictors while setting less important ones to zero.
-
-Ridge regression is particularly useful for handling multicollinearity among predictors, ensuring that all variables contribute to the prediction without being overly penalized.
-
-Elastic net balances the benefits of both LASSO ridge, so by handling both variable selection and multicollinearity, elastic net is well-suited for high-dimensional datasets where predictors are correlated.
-
-Since the data gets correlated with each other when combined (adding diet, chemicals and the metabolomic serum), group LASSO, ridge, and elastic net were applied.
-
-Decision tree (with pruning) splits the data into subsets based on the value of input features, with pruning applied to prevent overfitting. This provides an interpretable structure for understanding the relationships between variables and the outcome, though it can be prone to overfitting without pruning. Pruning gets applied to enhance generalizability.
-
-Random forest constructs multiple decision trees and merges them to obtain a more accurate and stable prediction. By averaging the predictions from numerous trees, this model reduces overfitting and captures complex interactions among variables.
-
-Gradient Boosting Machine (GBM) builds an ensemble of trees in a sequential manner, where each tree corrects the errors of its predecessors. This approach is highly effective in improving predictive accuracy by focusing on the residuals of previous trees, making it powerful for capturing non-linear relationships.
-
-Thes ensemble methods (razndom forest and GBM) were chosen for their robustness and high predictive accuracy. Random forest reduces variance by averaging multiple trees, while GBM improves model performance through iterative refinement.
-
-In this study, the Root Mean Squared Error (RMSE) is used as the primary performance metric to evaluate and compare the predictive models. Using RMSE allows for straightforward comparisons between different models and datasets. Since RMSE is in the same units as the outcome variable, it facilitates direct assessment of how well different models perform in predicting BMI Z-scores, making it easier to identify the model that provides the most accurate predictions.
-
-By employing a diverse set of models, this analysis aims to identify the most significant predictors of BMI Z-scores and understand the complex interactions between dietary intake, chemical exposures, and metabolomic serum data. The combination of regularization techniques and ensemble methods ensures a comprehensive and reliable assessment of the data.
-
-# Results
+To analyze the impact of dietary, chemical, and demographic variables on BMI Z-scores, various statistical models were employed, each chosen for their unique strengths in handling different aspects of the data. These models were analyzed and performed with a 70-30% split in order to train models and predict the performance. Using a 10-fold cross validation was also applied to avoid overfitting and offer a reliable measure of a model's predictive power and generalizability.
 
 ```{r selected data chemicals, warning=FALSE}
 #selected chemicals that were noted in enet
@@ -837,7 +746,6 @@ finalized_columns <- c(combined_data_selected)
 final_selected_data <- exposome %>% dplyr::select(all_of(finalized_columns))
 
 finalized_data <- cbind(outcome_cov, final_selected_data)
-head(finalized_data)
 ```
 
 ```{r corr plot, warning = FALSE}
@@ -863,6 +771,14 @@ highly_correlated_pairs
 ```
 
 The correlation plot for the selected variables indicates notable multicollinearity among various chemical variables and the child age covariate. Using grouped regression models like LASSO, ridge, and elastic net allows for the collective handling of these highly correlated variables. This approach helps with overfitting.
+
+LASSO (Least Absolute Shrinkage and Selection Operator) applies L1 regularization to minimize the absolute sum of coefficients. It was used to perform variable selection and regularization, effectively identifying the most significant predictors while setting less important ones to zero. Ridge regression is particularly useful for handling multicollinearity among predictors, ensuring that all variables contribute to the prediction without being overly penalized. Elastic net balances the benefits of both LASSO ridge, so by handling both variable selection and multicollinearity, elastic net is well-suited for high-dimensional datasets where predictors are correlated. Since the data gets correlated with each other when combined (adding diet, chemicals and the metabolomic serum), group LASSO, ridge, and elastic net were applied.
+
+Decision tree (with pruning) splits the data into subsets based on the value of input features, with pruning applied to prevent overfitting. This provides an interpretable structure for understanding the relationships between variables and the outcome, though it can be prone to overfitting without pruning. Pruning gets applied to enhance generalizability. Random forest constructs multiple decision trees and merges them to obtain a more accurate and stable prediction. By averaging the predictions from numerous trees, this model reduces overfitting and captures complex interactions among variables. Gradient Boosting Machine (GBM) builds an ensemble of trees in a sequential manner, where each tree corrects the errors of its predecessors. This approach is highly effective in improving predictive accuracy by focusing on the residuals of previous trees, making it powerful for capturing non-linear relationships. These ensemble methods (razndom forest and GBM) were chosen for their robustness and high predictive accuracy. Random forest reduces variance by averaging multiple trees, while GBM improves model performance through iterative refinement.
+
+In this study, the Root Mean Squared Error (RMSE) is used as the primary performance metric to evaluate and compare the predictive models. Using RMSE allows for straightforward comparisons between different models and datasets. Since RMSE is in the same units as the outcome variable, it facilitates direct assessment of how well different models perform in predicting BMI Z-scores, making it easier to identify the model that provides the most accurate predictions. By employing a diverse set of models, this analysis aims to identify the most significant predictors of BMI Z-scores and understand the complex interactions between dietary intake, chemical exposures, and metabolomic serum data. The combination of regularization techniques and ensemble methods ensures a comprehensive and reliable assessment of the data.
+
+# Results
 
 ## Baseline (Covariates)
 
@@ -913,7 +829,7 @@ rmse_lasso_cv <- sqrt(mse_lasso_cv)
 cat("10-Fold CV Lasso RMSE:", rmse_lasso_cv)
 ```
 
-As λ increases, the penalty for the coefficients becomes stronger, driving some coefficients to zero. The optimal λ (lambda.min) is chosen as the one that minimizes the cross-validated MSE. The coefficients listed show the non-zero variables selected by LASSO. In this case, children's age is selected as significant.
+The LASSO model for covariates only shows the selection of significant variables with their coefficients, with the optimal lambda chosen near log(λ) ≈ -4. This indicates the point where the model achieves the best balance between bias and variance, minimizing the mean squared error. The cross-validated RMSE is 1.152, indicating the model's predictive accuracy on unseen data. Among the covariates, only the child's age (hs_child_age_None) has a significant negative coefficient (-0.057), suggesting that as the child's age increases, the BMI Z-score slightly decreases. The other variables (sex and birth years) were not selected as significant predictors in this model. This demonstrates that age is the most influential covariate in predicting BMI Z-score, while the other covariates did not have a significant impact.
 
 ### Ridge
 
@@ -943,7 +859,7 @@ rmse_ridge_cv <- sqrt(mse_ridge_cv)
 cat("10-Fold CV Ridge RMSE:", rmse_ridge_cv, "\n")
 ```
 
-The coefficients show that age has the most significant effect, similar to LASSO, with other variables having very small coefficients. The λ was optimized using the same cross-validation approach as LASSO. Ridge regression performs similarly to LASSO in terms of RMSE.
+The ridge regression model for the covariates focuses on minimizing model complexity to avoid overfitting. The mean squared error (MSE) plot against log(lambda) values shows the model's performance across various regularization levels. The optimal lambda is selected where MSE is minimized, balancing complexity and accuracy. The baseline ridge model yields an RMSE of 1.152, with a cross-validated RMSE of 1.149, indicating stable performance. The child's age (hs_child_age_None) shows a negative association with BMI Z-score, suggesting older children tend to have slightly lower BMI Z-scores. Other covariates, like sex and year of birth, have near-zero coefficients, indicating minimal impact.
 
 ### Elastic Net
 
@@ -973,7 +889,7 @@ rmse_enet_cv <- sqrt(mse_enet_cv)
 cat("10-Fold CV Elastic Net RMSE:", rmse_enet_cv, "\n")
 ```
 
-Elastic Net uses cross-validation to find the best balance between LASSO and Ridge penalties. The Elastic Net RMSE is the same as LASSO, indicating similar predictive performance.
+The elastic net model, which combines LASSO and ridge penalties for variable selection and coefficient shrinkage, achieved a baseline RMSE of 1.152. This model maintained an RMSE of 1.152 after 10-fold cross-validation, indicating stable performance. The optimal lambda was selected near log(λ) ≈ -3, suggesting minimal coefficient shrinkage. The model identified the child's age (hs_child_age_None) as a significant variable with a coefficient of -0.0574, indicating a slight negative association with the BMI Z-score. Other covariates like sex and birth year did not show significant contributions.
 
 ### Decision Tree
 
@@ -990,6 +906,12 @@ rpart.plot(fit_tree)
 printcp(fit_tree)
 plotcp(fit_tree)
 
+tree_predictions <- predict(fit_tree, newdata = test_data)
+mse_tree <- mean((test_data$hs_zbmi_who - tree_predictions)^2)
+rmse_tree <- sqrt(mse_tree)
+
+cat("Baseline Unpruned Decision Tree RMSE:", rmse_tree, "\n")
+
 # getting the optimal cp value that minimizes the cross-validation error
 optimal_cp <- fit_tree$cptable[which.min(fit_tree$cptable[,"xerror"]), "CP"]
 cat("Optimal cp value:", optimal_cp, "\n")
@@ -1004,7 +926,9 @@ rmse_pruned_tree <- sqrt(mse_pruned_tree)
 cat("Baseline Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-```{r}
+Pruning prior to cross-validation proved ineffective as it retained the full tree. However, cross-validation effectively identified the minimal cp value, ensuring the pruned tree was optimal for generalizing the model performance across unseen data. The emphasis on a single variable underscores the simplicity yet potential power of the decision tree in modeling BMI outcomes based on age.
+
+```{r baseline decision tree cv, warning = FALSE}
 set.seed(101)
 
 train_control <- trainControl(method = "cv", number = 10)
@@ -1027,7 +951,12 @@ fit_tree_unpruned <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
 fit_tree_best <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova", control = rpart.control(cp = best_cp))
 
 rpart.plot(fit_tree_unpruned)
+printcp(fit_tree_unpruned)
+plotcp(fit_tree_unpruned)
+
 rpart.plot(fit_tree_best)
+printcp(fit_tree_best)
+plotcp(fit_tree_best)
 
 unpruned_tree_predictions <- predict(fit_tree_unpruned, newdata = test_data)
 pruned_tree_predictions <- predict(fit_tree_best, newdata = test_data)
@@ -1043,7 +972,11 @@ cat("Unpruned Decision Tree RMSE:", rmse_unpruned_tree, "\n")
 cat("Pruned Decision Tree RMSE with Best cp:", rmse_pruned_tree, "\n")
 ```
 
-The decision tree plot shows a simple model with age as the primary split. The complexity parameter (cp) controls tree pruning. The optimal cp was determined by cross-validation, selecting the cp that minimized cross-validation error. The RMSE shows that pruning improved the model slightly but was not as effective as regularization methods.
+The baseline decision tree model, which solely used the variable "hs_child_age_None," yielded an RMSE of 1.155. This indicates the initial model's error rate when predicting BMI Z-scores. Pruning the tree with the optimal complexity parameter (cp) of 0.0116, derived from the cross-validation, improved the RMSE to 1.149, demonstrating reduced overfitting and better performance.
+
+After cross-validation, the optimal cp value was identified as 0.007. The pruned tree with this cp value did not further reduce the RMSE compared to the initial pruning, indicating the previous pruning was already optimal.
+
+The pruned decision tree using cross-validation emphasizes the significance of "hs_child_age_None" in predicting BMI Z-scores. It splits the data based on whether the child's age is greater than or equal to 6.5 years. Children younger than 6.5 years have a higher BMI Z-score (0.64) compared to older children (0.34), suggesting age as a critical factor influencing BMI.
 
 ### Random Forest
 
@@ -1070,7 +1003,7 @@ rmse_rf_cv <- sqrt(mse_rf_cv)
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-Age is the most important variable, followed by year of birth. Random Forest performs similarly to other models in terms of RMSE.
+For the random forest model, the RMSE of the baseline model was 1.158, and after performing 10-fold cross-validation, the RMSE slightly improved to 1.155. The model identified all three significant variables: child's age (hs_child_age_None), year of birth (e3_yearbir_None), and sex (e3_sex_None). These variables contributed the most to the model's prediction accuracy. The child's age showed the highest importance, indicating that the age of the child is the most influential factor in predicting BMI Z-score. The year of birth and sex also played notable roles but with lesser importance compared to age.
 
 ### GBM
 
@@ -1099,15 +1032,11 @@ rmse_gbm_cv <- sqrt(mse_gbm_cv)
 cat("10-Fold CV GBM RMSE:", rmse_gbm_cv, "\n")
 ```
 
-Age has the highest relative influence. GBM shows slightly better performance compared to some other models.
+The GBM model produced a baseline RMSE of 1.1488 and a 10-fold cross-validated RMSE of 1.1497, showing good accuracy. Key variables include child age (hs_child_age_None), year of birth (e3_yearbir_None), and sex (e3_sex_None), with child age being the most influential. The relative influence of child age (79.6) far exceeds that of birth year (14.7) and sex (5.7), indicating its dominant role in predicting BMI Z-score. The model's performance demonstrates that these covariates significantly impact BMI predictions in children.
 
 ### **Model Comparison:**
 
-LASSO, Ridge, and Elastic Net: Provide similar predictive performance, with all models effectively handling multicollinearity.
-
-Decision Tree: Simple and interpretable, but less effective than regularization methods.
-
-Random Forest and GBM: Offer competitive performance, with GBM slightly better in RMSE.
+Child age consistently emerged as the most influential predictor across all models, demonstrating its strong association with BMI Z-score. While the ridge model and GBM provided slightly better performance, the choice between models may depend on the desired balance between interpretability (decision tree, LASSO) and predictive power (random forest, GBM). The ridge and elastic Net models offer a balance, retaining some influence from additional covariates, albeit minimal.
 
 ## Diet + Covariates
 
@@ -1174,11 +1103,7 @@ rmse_lasso_cv <- sqrt(mse_lasso_cv)
 cat("10-Fold CV Lasso RMSE:", rmse_lasso_cv)
 ```
 
-The coefficient paths plot for LASSO regression (shown above) displays the changes in the coefficients of the predictors as the regularization parameter λ varies. The vertical dashed lines indicate the optimal λ values chosen by cross-validation to minimize the Mean Squared Error (MSE). As λ increases, more coefficients are shrunk to zero, resulting in a simpler model.
-
-The optimal λ is selected based on the 10-fold cross-validation procedure, which evaluates the model performance on different subsets of the data. The λ value corresponding to the lowest cross-validated error is chosen to ensure the best predictive performance while preventing overfitting.
-
-The LASSO model for diet variables addition shows an RMSE of approximately 1.14, indicating the average error between the predicted and actual BMI Z-scores. The LASSO model identified child's age as a significant predictor with a non-zero coefficient. Most diet-related variables were shrunk to zero, indicating their lesser impact when combined with covariates.
+The LASSO regression model for the combination of diet and covariates yielded an RMSE of 1.139, with a cross-validated RMSE of 1.140, indicating consistency in model performance. The optimal lambda value was determined to be near log(λ) ≈ -3, as shown in the plot. In this model, the variable child's age was the only significant variable, with a coefficient of -0.0574, indicating that as the child's age increases, the BMI Z-score decreases. This suggests that age plays a crucial role in predicting BMI Z-score in the presence of diet and covariate factors. Other variables, such as dietary intake categories, did not show significant coefficients, implying limited influence on BMI Z-score within the context of this model.
 
 ### Ridge
 
@@ -1207,9 +1132,7 @@ rmse_ridge_cv <- sqrt(mse_ridge_cv)
 cat("10-Fold CV Ridge RMSE:", rmse_ridge_cv, "\n")
 ```
 
-The coefficient paths plot for Ridge regression shows the changes in the coefficients as λ varies. Unlike LASSO, Ridge regression shrinks the coefficients but does not set them to zero. This results in all predictors contributing to the model, though some may have very small coefficients.
-
-The Ridge model with the addition of diet variables shows an RMSE of around 1.13, suggesting slightly better performance compared to the LASSO model.
+For the ridge regression model, the optimal lambda was identified at approximately log(λ) = 0. The baseline RMSE for this model is 1.131, and the 10-fold cross-validated RMSE is 1.129, indicating consistent model performance. Important variables in this model include hs_child_age_None with a coefficient of -0.057, suggesting that as the age of the child increases, the BMI Z-score tends to decrease. Other dietary variables and covariates, such as various food intake categories (e.g., bakery products, dairy, fast food), did not show significant coefficients, suggesting that they have less influence in this ridge regression model for predicting BMI Z-score.
 
 ### Elastic Net
 
@@ -1238,9 +1161,7 @@ rmse_enet_cv <- sqrt(mse_enet_cv)
 cat("10-Fold CV Elastic Net RMSE:", rmse_enet_cv, "\n")
 ```
 
-The coefficient paths for Elastic Net combine the features of both LASSO and Ridge regressions, balancing between setting some coefficients to zero (like LASSO) and shrinking others (like Ridge). The paths display the progression of coefficients as λ varies.
-
-The Elastic Net model for Diet + Covariates also performs well, with an RMSE close to 1.13, comparable to the Ridge regression performance.
+The elastic net model's optimal lambda value, near log(λ) ≈ -3, minimizes the mean squared error. Important variables identified include "hs_child_age_None" with a coefficient of -0.057, suggesting that older age is associated with a lower BMI Z-score, while other covariates like sex and year of birth showed no significant impact. The baseline RMSE of 1.137 and the cross-validated RMSE of 1.139 indicate the model's performance and consistency.
 
 ### Decision Tree
 
@@ -1310,11 +1231,7 @@ cat("Unpruned Decision Tree RMSE:", rmse_unpruned_tree, "\n")
 cat("Pruned Decision Tree RMSE with Best cp:", rmse_pruned_tree, "\n")
 ```
 
-The decision tree split on child's age first, indicating it is the most important variable. Subsequent splits involve dietary variables like bakery products, cereal, and total lipids.
-
-The tree was pruned using the complexity parameter (cp) to avoid overfitting. The optimal cp was found using cross-validation.
-
-Pruning slightly improved the model's performance by reducing overfitting.
+The decision tree model for diet and covariates demonstrates that the initial unpruned model has an RMSE of 1.153, which slightly improves to 1.149 after pruning. Pruning helps by eliminating less important branches, which reduces overfitting and enhances the model's generalization capability. The complexity parameter (cp) of 0.011 was identified as the optimal value for pruning, minimizing cross-validation error. Key variables influencing the BMI Z-score include the child's age (hs_child_age_None), and dietary factors such as high consumption of bakery products (hs_bakery_prod_Ter), breakfast cereals (hs_break_cer_Ter), and lipids (hs_total_lipids_Ter). These results indicate the significant role of both age and specific dietary patterns in predicting BMI outcomes in children.
 
 ### Random Forest
 
@@ -1343,7 +1260,7 @@ rmse_rf_cv <- sqrt(mse_rf_cv)
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-Random forest identified child's age and year of birth as the most important variables. The model provided a robust prediction by aggregating multiple decision trees, reducing variance, and handling nonlinear relationships well.
+The random forest model yielded an RMSE of 1.140, with a 10-fold cross-validated RMSE of 1.129, indicating robust model performance. The most influential variable in this model was the child's age (hs_child_age_None), followed by the year of birth (e3_yearbir_None), and sex (e3_sex_None). Dietary variables also played significant roles, such as the total vegetable intake (hs_total_veg_Ter), processed meat intake (hs_proc_meat_Ter), bakery products (hs_bakery_prod_Ter), breakfast cereal intake (hs_break_cer_Ter), and fruit consumption (hs_total_fruits_Ter). These dietary factors, alongside the covariates, contributed to the prediction accuracy, highlighting the model's ability to capture the multifactorial influences on the BMI Z-score in children.
 
 ### GBM
 
@@ -1373,11 +1290,11 @@ rmse_gbm_cv <- sqrt(mse_gbm_cv)
 cat("10-Fold CV GBM RMSE:", rmse_gbm_cv, "\n")
 ```
 
-GBM also highlighted age as the most influential variable, followed by birth year and several diet variables. The number of trees was optimized using cross-validation, indicated by the vertical line in the error plot. GBM showed strong predictive performance by combining boosting with decision trees, focusing on reducing bias and variance.
+The GBM modelyielded an RMSE of 1.138, with a cross-validated RMSE of 1.136, demonstrating strong predictive accuracy. The variable "hs_child_age_None" had the highest relative influence (27.745752), indicating its significant impact on the model. Other important variables included "e3_yearbir_None" (12.544772) and "hs_break_cer_Ter" (6.344034), reflecting their substantial contributions to the model's performance. The diet-related variables such as "hs_total_lipids_Ter" (5.849461), "hs_bakery_prod_Ter" (5.394027), and "hs_total_veg_Ter" (5.773139) also played crucial roles in predicting BMI Z-score, highlighting the importance between dietary habits and covariates in influencing childhood BMI outcomes.
 
 ### **Model Comparison:**
 
-The inclusion of diet variables generally improved the model performance, highlighting the importance of considering dietary factors alongside traditional covariates in predicting BMI Z-score. All models consistently identified child's age as a significant predictor. Regularization techniques like ridge and elastic net performed well, handling multicollinearity and ensuring robust predictions. The decision tree and random forest models highlighted the importance of specific dietary variables in combination with covariates. GBM provided a comprehensive approach by effectively combining multiple weak learners, optimizing performance.
+Overall, "hs_child_age_None" consistently emerged as the most influential variable across all models, highlighting its critical role in predicting BMI Z-score. Dietary variables such as "hs_bakery_prod_Ter," "hs_break_cer_Ter," and "hs_total_lipids_Ter" were also significant in multiple models, underscoring the interplay between diet and child age in influencing BMI outcomes. The GBM model, with the lowest RMSE, suggests the highest predictive accuracy among the methods evaluated.
 
 ## Chemicals + Covariates
 
@@ -1436,7 +1353,7 @@ rmse_lasso_cv <- sqrt(mse_lasso_cv)
 cat("10-Fold CV Lasso RMSE:", rmse_lasso_cv)
 ```
 
-The optimal lambda (λ) is chosen by cross-validation, which minimizes the Mean Squared Error (MSE). The optimal λ is identified near log(λ) ≈ -2.5, where the MSE is the lowest. Child age, cobalt (hs_co_c_Log2), and other chemical-related variables like copper (hs_cu_c_Log2) and mercury (hs_hg_c_Log2) have significant coefficients.
+The LASSO regression model for chemical and covariate data includes variables such as age, sex, year of birth, and various chemical concentrations. The optimal lambda (log(λ) ≈ -3) minimizes the cross-validated error, ensuring a balance between bias and variance. The model shows a cross-validated RMSE of 1.041, indicating reasonable prediction accuracy. Important variables include hs_child_age_None (-0.04273), hs_cu_c_Log2 (0.26065), and hs_pfoa_c_Log2 (-0.0978), highlighting their significant contributions to predicting the outcome. Negative coefficients suggest an inverse relationship with the BMI Z-score, whereas positive coefficients indicate a direct relationship.
 
 ### Ridge
 
@@ -1465,7 +1382,7 @@ rmse_ridge_cv <- sqrt(mse_ridge_cv)
 cat("10-Fold CV Ridge RMSE:", rmse_ridge_cv, "\n")
 ```
 
-The optimal lambda is found around log(λ) ≈ 0, where MSE is minimized. Multiple variables, including age, birth year, and various chemical variables, have significant coefficients.
+The ridge regression model for the combination of chemicals and covariates yields an RMSE of 1.036, demonstrating its predictive accuracy. The optimal lambda is chosen at a value near log(λ) ≈ -2, which balances the bias-variance tradeoff effectively. Significant variables influencing BMI Z-scores include the child's age, sex, and birth year, as well as the concentrations of various chemicals. For instance, higher levels of cadmium (hs_cd_c_Log2) and copper (hs_cu_c_Log2) show notable positive associations with BMI Z-scores. Conversely, higher concentrations of lead (hs_pb_c_Log2) and specific PCBs (hs_pcb153_cadj_Log2) are negatively associated with BMI Z-scores.
 
 ### Elastic Net
 
@@ -1494,21 +1411,7 @@ rmse_enet_cv <- sqrt(mse_enet_cv)
 cat("10-Fold CV Elastic Net RMSE:", rmse_enet_cv, "\n")
 ```
 
-Elastic Net combines LASSO and Ridge penalties, leading to variable selection and coefficient shrinkage. The optimal lambda is chosen near log(λ) ≈ -2.5.
-
-Variables:
-
--   hs_child_age_None: -0.0447
-
--   hs_co_c_Log2: 0.2772 (positive association)
-
--   hs_pfoa_c_Log2: -0.1030
-
--   hs_cu_c_Log2: 0.0154 (slight positive association)
-
--   hs_pcb170_cadj_Log2: -0.1256
-
-Elastic Net confirms the significance of certain chemicals like hs_co_c and hs_cu_c while also identifying the negative association of hs_pfoa_c.
+The elastic net model's optimal lambda, chosen around log(λ) ≈ -2.3, minimizes the mean-squared error, ensuring the best fit for the model. Significant variables included child age, with a negative coefficient indicating that older age is associated with a lower BMI Z-score. Higher log-transformed copper levels showed a strong positive association with BMI Z-score, while other chemicals such as cadmium, lead, and PCBs (polychlorinated biphenyls) displayed negative associations. The model’s baseline RMSE was 1.040, and the 10-fold cross-validated RMSE was 1.036, indicating good predictive performance. The optimal lambda helped minimize prediction error, ensuring robust model accuracy.
 
 ### Decision Tree
 
@@ -1578,11 +1481,7 @@ cat("Unpruned Decision Tree RMSE:", rmse_unpruned_tree, "\n")
 cat("Pruned Decision Tree RMSE with Best cp:", rmse_pruned_tree, "\n")
 ```
 
-The decision tree diagram shows the splits based on different chemical covariates. The root node splits on Polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), indicating its high importance.
-
-Variables such as hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, and hs_dde_cadj_Log2 are prominent, as they appear at the top levels of the tree.
-
-The unpruned decision tree has an RMSE of 1.186, and after pruning using the optimal complexity parameter (cp), the RMSE is slightly reduced to 1.090, indicating improved model performance.
+The decision tree model for predicting BMI z-scores using chemical and covariate data yielded an RMSE of 1.108, indicating the model's prediction accuracy. The primary variables used in the tree construction include log-transformed concentrations of PCB170, PBDE153, DDE, and MBZP, among others. Pruning the tree improved the RMSE to 1.090, highlighting the benefits of removing less significant branches. The optimal complexity parameter (cp) value from cross-validation was 0.023. This pruned model indicates a more generalized fit by reducing overfitting, evident from the lower cross-validated RMSE. The decision tree structure reflects the hierarchical influence of these chemical variables on BMI z-scores, with PCB170 and PBDE153 being crucial decision nodes in both the pruned and unpruned trees.
 
 ### Random Forest
 
@@ -1610,9 +1509,7 @@ rmse_rf_cv <- sqrt(mse_rf_cv)
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-The random forest model's variable importance plot highlights the most influential variables based on the increase in node purity. hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, and hs_dde_cadj_Log2 are the top contributors.
-
-The random forest model achieves an RMSE of 1.032, demonstrating its robust predictive performance due to the ensemble of decision trees.
+The random forest model shows a robust performance with an RMSE of 1.031 and a cross-validated RMSE of 1.032, indicating consistency and reliability. The model's significant variables include PCB-170, PBDE-153, and PCB-153, which have high importance in predicting the outcome. Additionally, other influential variables such as DDE, copper, and PFOA are also prominent in the model. The RMSE values suggest that the model is effective at predicting the BMI Z-score based on these chemical exposures and covariates, providing insights into the factors influencing child BMI. The minimal difference between the pruned and unpruned models indicates that pruning does not significantly enhance model performance, suggesting that the initial model is already optimized. The cross-validation further confirms the model's stability and predictive accuracy.
 
 ### GBM
 
@@ -1642,19 +1539,13 @@ rmse_gbm_cv <- sqrt(mse_gbm_cv)
 cat("10-Fold CV GBM RMSE:", rmse_gbm_cv, "\n")
 ```
 
-The GBM model's relative influence plot shows that hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2, and hs_dde_cadj_Log2 have the highest relative influence on the model's predictions.
-
-The GBM model has an RMSE of 1.076, and the cross-validated RMSE is 1.040, indicating good predictive accuracy and generalization to unseen data.
+The GBM model's relative influence plot shows that polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), polybrominated diphenyl ether-153 (hs_pbde153_cadj_Log2), and dichlorodiphenyldichloroethylene (hs_dde_cadj_Log2) have the highest relative influence on the model's predictions. These chemicals were found to have the highest relative influence on the model's predictions, contributing to its accuracy. In terms of model performance, the cross-validated GBM showed improved predictive accuracy compared to the baseline, reflecting the robustness of the model in handling different data subsets. The GBM model has an RMSE of 1.076, and the cross-validated RMSE is 1.040, indicating good predictive accuracy and generalization to unseen data.
 
 ### **Model Comparison:**
 
-LASSO, Ridge, and Elastic Net Models: These models effectively identify significant chemical covariates, with optimization achieved through cross-validation to select the best λ. Chemical-related variables (hs_cd_c_Log2, hs_co_c_Log2, etc.) also show significance, indicating their influence on the outcome. Ridge regression and elastic net provide lower RMSE values, suggesting better generalization compared to LASSO.
+Overall, the models for chemical and covariates data highlight the significant role of specific chemicals in predicting outcomes.  The random forest model, while also effective, showed slightly higher RMSEs. Decision tree models benefited from pruning, which improved their performance, but still lagged behind the ensemble methods. The LASSO, ridge, and elastic net models provided useful insights into variable importance but had higher RMSEs compared to the GBM, reflecting the trade-off between interpretability and predictive power. Ridge regression and elastic net provide lower RMSE values, suggesting better generalization compared to LASSO.
 
-Decision Tree: Provides an intuitive model with key splits on important chemical covariates but may overfit without pruning.
-
-Random Forest: Offers robust performance by aggregating multiple trees, highlighting key variables and achieving low RMSE.
-
-GBM: Combines boosting with tree-based methods to enhance predictive accuracy, with clear identification of influential variables.
+In summary, the models consistently identified polychlorinated biphenyl-170, polybrominated diphenyl ether-153, dichlorodiphenyldichloroethylene, copper, and perfluorooctanoic acid as crucial variables for predicting BMI Z-scores.
 
 ## Diet + Chemical + Covariates
 
@@ -1708,8 +1599,6 @@ group_indices <- c(
 if (length(group_indices) < ncol(x_train)) {
   group_indices <- c(group_indices, rep(4, ncol(x_train) - length(group_indices)))
 }
-
-length(group_indices) == ncol(x_train)  # should be TRUE
 ```
 
 ### Group LASSO
@@ -1750,21 +1639,7 @@ rmse_group_lasso <- sqrt(mse_group_lasso)
 cat("Group LASSO RMSE with 10-fold CV:", rmse_group_lasso, "\n")
 ```
 
-The cross-validated RMSE is 1.031, showing consistency in performance across different data subsets.
-
-**Significant Variables:**
-
--   e3_yearbir_None2009: The positive coefficient (0.349) suggests that being born in 2009 is associated with an increase in the BMI Z-score.
-
--   hs_cu_c_Log2: The positive coefficient (0.478) suggests that higher levels of copper are strongly associated with an increase in the BMI Z-score.
-
--   hs_cd_c_Log2: The negative coefficient (-0.047) indicates that higher levels of Cadmium are associated with a decrease in BMI Z-score.
-
--   hs_mibp_cadj_Log2: The negative coefficient (-0.077) indicates that higher levels of MiBP are associated with a decrease in BMI Z-score.
-
--   hs_total_fruits_Ter(7,14.1]: The positive coefficient (0.059) suggests that consuming fruits in this range is associated with an increase in the outcome variable.
-
-These variables have the most significant influence on the outcome based on the coefficients from the group LASSO model.
+The cross-validated RMSE of 1.031 indicates consistent performance across different data subsets. Significant variables identified in the group LASSO model include e3_yearbir_None2009, which, with a positive coefficient of 0.349, suggests that being born in 2009 is linked to an increased BMI Z-score. Higher levels of copper (hs_cu_c_Log2) with a coefficient of 0.478 are strongly associated with an increase in BMI Z-score, while higher cadmium levels (hs_cd_c_Log2) and MiBP (hs_mibp_cadj_Log2) are linked to a decrease in BMI Z-score, with coefficients of -0.047 and -0.077, respectively. Additionally, consuming fruits within the range of 7 to 14.1 servings (hs_total_fruits_Ter(7,14.1]) is associated with an increase in BMI Z-score, as indicated by a coefficient of 0.059. These variables significantly influence the outcome based on the group LASSO model coefficients.
 
 ### Group Ridge
 
@@ -1805,15 +1680,7 @@ rmse_group_ridge <- sqrt(mse_group_ridge)
 cat("Group Ridge RMSE with 10-fold CV:", rmse_group_ridge, "\n")
 ```
 
-e3_yearbir_None2009: This variable indicates the year of birth of the children in 2009, having a positive coefficient (0.465), suggesting that being born in 2009 is associated with an increase in the response variable compared to the reference year.
-
-hs_cu_c_Log2: This variable represents the log-transformed concentration of Copper (Cu) in serum. A positive coefficient (0.606) indicates that higher concentrations of copper are associated with an increase in the response variable.
-
-hs_mbzp_cadj_Log2: This variable represents the log-transformed concentration of Mono-Benzyl Phthalate (MBzP), a type of phthalate, in serum. A positive coefficient (0.110) suggests that higher levels of MBzP are associated with an increase in the response variable.
-
-hs_break_cer_Ter(5.5,Inf]: This variable represents a high intake of breakfast cereals (tertile \> 5.5 servings per week). A negative coefficient (-0.115) indicates that higher consumption of breakfast cereals is associated with a decrease in the response variable.
-
-hs_pbcb153_cadj_Log2: This variable represents the log-transformed concentration of Polychlorinated Biphenyl (PCB-153), a type of PCB, in serum. A negative coefficient (-0.199) suggests that higher levels of PCB-153 are associated with a decrease in the response variable.
+The group ridge model produced a RMSE of 1.042. After performing 10-fold cross-validation, the optimal lambda value identified was 0.0402, resulting in an RMSE of 1.033. Significant variables in this model included the year of birth (e3_yearbir_None2009) with a positive coefficient of 0.465, indicating that being born in 2009 is associated with an increased BMI Z-score. Copper levels (hs_cu_c_Log2) also showed a strong positive association with a coefficient of 0.606. Higher levels of mono-benzyl phthalate (hs_mbzp_cadj_Log2) were associated with an increase in the response variable, evidenced by a coefficient of 0.110. Conversely, a high intake of breakfast cereals (hs_break_cer_Ter(5.5, Inf]) was linked to a decrease in BMI Z-score with a coefficient of -0.115. Lastly, higher levels of polychlorinated biphenyl-153 (hs_pbcb153_cadj_Log2) were associated with a decrease in the response variable, indicated by a negative coefficient of -0.199.
 
 ### Group Elastic Net
 
@@ -1854,15 +1721,7 @@ rmse_group_enet <- sqrt(mse_group_enet)
 cat("Group Elastic Net RMSE with 10-fold CV:", rmse_group_enet, "\n")
 ```
 
--   e3_yearbir_None2009: The year of birth 2009 is positively associated (0.2673) with the outcome variable. This suggests that being born in 2009 is linked with an increase in the dependent variable.
-
--   hs_cu_c_Log2: Higher log-transformed copper levels are strongly positively associated (0.544) with the outcome, indicating that higher copper concentrations are linked with an increase in the dependent variable.
-
--   h_bfdur_Ter(10.8,34.9]: This breastfeeding duration category is positively associated (0.087) with the outcome, suggesting that breastfeeding for 10.8 to 34.9 months is linked with an increase in the dependent variable.
-
--   hs_pb_c_Log2: Higher log-transformed lead levels are negatively associated ((-0.096)) with the outcome, suggesting that higher lead concentrations are linked with a decrease in the dependent variable.
-
--   e3_yearbir_None2004: The year of birth 2004 is negatively associated (-0.125) with the outcome, indicating that being born in 2004 is linked with a decrease in the dependent variable.
+The group elastic net model initially produced an RMSE of 1.043. After performing 10-fold cross-validation, the optimal lambda value identified was 0.037, resulting in an RMSE of 1.032. Significant variables in this model included the birth year 2009 (e3_yearbir_None2009) with a positive coefficient of 0.2673, indicating an association with increased BMI Z-score. Higher log-transformed copper levels (hs_cu_c_Log2) showed a strong positive association with a coefficient of 0.544. The breastfeeding duration category (h_bfdur_Ter(10.8,34.9])) was also positively associated with an increase in the outcome variable, as suggested by a coefficient of 0.087. Conversely, higher log-transformed lead levels (hs_pb_c_Log2) were negatively associated with the outcome, indicated by a coefficient of -0.096. The birth year 2004 (e3_yearbir_None2004) was negatively associated with the outcome, as evidenced by a coefficient of -0.125.
 
 ### Decision Tree
 
@@ -1894,7 +1753,7 @@ rmse_pruned_tree <- sqrt(mse_pruned_tree)
 cat("Pruned Diet + Chemical + Covariates Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-```{r}
+```{r diet + chem + cov decision tree cv, warning = FALSE}
 set.seed(101)
 
 train_control <- trainControl(method = "cv", number = 10)
@@ -1931,21 +1790,7 @@ cat("Unpruned Decision Tree RMSE:", rmse_unpruned_tree, "\n")
 cat("Pruned Decision Tree RMSE with Best cp:", rmse_pruned_tree, "\n")
 ```
 
-The RMSE for the unpruned decision tree is 1.129, and after pruning, the RMSE is 1.090. Pruning improves the model's performance by reducing overfitting.
-
-**Important Variables:**
-
--   hs_pcb170_cadj_Log2
-
--   hs_pbde153_cadj_Log2
-
--   hs_dde_cadj_Log2
-
--   hs_mnbp_cadj_Log2
-
--   hs_pfoa_c_Log2
-
-These variables are crucial for splitting the data effectively in the tree.
+The unpruned decision tree model for predicting BMI Z-score in children had an RMSE of 1.129, indicating the initial model's error rate. After applying pruning to the decision tree and with cross-validation of 10 folds, the RMSE improved to 1.090, demonstrating enhanced model performance by reducing overfitting. Pruning, which involves trimming less critical branches, helps in creating a more generalized model. Key variables identified in the decision tree include log-transformed concentrations of PCBs (hs_pcb170_cadj_Log2 and hs_pbde153_cadj_Log2), which were crucial in splitting the data. The pruned tree reveals the hierarchical influence of these variables and others such as log-transformed levels of DDE (dichlorodiphenyldichloroethylene), MiBP (Mmno-isobutyl phthalate), and PFOA (perfluorooctanoic acid) on the BMI Z-score outcomes. The best complexity parameter (cp) value from cross-validation was 0.023, indicating the optimal point at which further pruning did not improve model performance.
 
 ### Random Forest
 
@@ -1976,19 +1821,7 @@ rmse_rf_cv <- sqrt(mse_rf_cv)
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-The RMSE for the Random Forest model is 1.025, and the cross-validated RMSE is 1.026, indicating strong performance.
-
-**Important Variables:**
-
--   hs_pcb170_cadj_Log2
-
--   hs_pbde153_cadj_Log2
-
--   hs_dde_cadj_Log2
-
--   hs_cu_c_Log2
-
--   hs_pfoa_c_Log2
+The random forest model yielded an RMSE of 1.025 and a cross-validated RMSE of 1.026, demonstrating robust performance. Key variables contributing to this model's effectiveness include polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), polybrominated diphenyl ether-153 (hs_pbde153_cadj_Log2), dichlorodiphenyldichloroethylene (hs_dde_cadj_Log2), copper (hs_cu_c_Log2), and perfluorooctanoic acid (hs_pfoa_c_Log2). These variables were identified as having the highest importance, significantly influencing the model’s predictive accuracy by reducing prediction errors and providing valuable insights into the factors affecting childhood BMI.
 
 ### GBM
 
@@ -2019,25 +1852,21 @@ rmse_gbm_cv <- sqrt(mse_gbm_cv)
 cat("10-Fold CV GBM RMSE:", rmse_gbm_cv, "\n")
 ```
 
-The RMSE for the GBM model is 1.072432, and the cross-validated RMSE is 1.048183, showing good accuracy and improvement over iterations.
+The RMSE for the GBM model is 1.072, with a cross-validated RMSE of 1.048, demonstrating good accuracy and improvement over iterations. Key variables in the model include polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), polybrominated diphenyl ether-153 (hs_pbde153_cadj_Log2), dichlorodiphenyldichloroethylene (hs_dde_cadj_Log2), perfluorooctanoic acid (hs_pfoa_c_Log2), and copper (hs_cu_c_Log2). These variables exhibit the highest relative influence, significantly contributing to reducing prediction errors and highlighting their importance in the model's predictive capability.
 
-**Important Variables** (based on Relative Influence):
+### **Model Comparison:**
 
--   `hs_pcb170_cadj_Log2`
+The GBM model demonstrated the best overall performance with a cross-validated RMSE of 1.048, slightly better than the random forest model's cross-validated RMSE of 1.026. This suggests that GBM's iterative boosting approach may be more effective in capturing the complex relationships within the data.
 
--   `hs_pbde153_cadj_Log2`
+Another notable observation is the consistent importance of certain variables across all models. Variables such as PCBs (hs_pcb170_cadj_Log2), PBDE-153 (hs_pbde153_cadj_Log2), DDE (hs_dde_cadj_Log2), copper (hs_cu_c_Log2), and PFOA (hs_pfoa_c_Log2) consistently emerged as significant predictors, highlighting their strong influence on childhood BMI Z-scores.
 
--   `hs_dde_cadj_Log2`
+The decision tree model's pruning process and cross-validation led to a substantial reduction in overfitting, improving its performance, as shown by the decrease in RMSE from 1.129 to 1.090. This underscores the importance of model regularization techniques in enhancing predictive accuracy.
 
--   `hs_pfoa_c_Log2`
+The comparison between the group LASSO, ridge, and elastic net models highlights the effectiveness of regularization techniques in handling high-dimensional data. The elastic net model, with an RMSE of 1.032 after cross-validation, effectively balanced the inclusion of significant predictors, combining the strengths of both LASSO and ridge penalties.
 
--   `hs_cu_c_Log2`
-
-These variables have the highest relative influence in the model, contributing significantly to reducing prediction errors.
+Overall, each model revealed significant predictors of BMI Z-scores, with environmental chemicals, dietary factors, and demographic covariates playing critical roles in influencing childhood BMI.
 
 ## Diet + Chemical + Metabolomic + Covariates
-
-In terms of the metabolomic data, the values were excluded since there were too many entries that unable to be imputed by mean or median.
 
 ```{r adding metabolomic, warning = FALSE}
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/metabol_serum.RData")
@@ -2045,10 +1874,7 @@ metabol_serum_transposed <- as.data.frame(t(metabol_serum.d))
 metabol_serum_transposed$ID <- as.integer(rownames(metabol_serum_transposed))
 
 # add the ID column to the first position
-metabol_serum_transposed <- metabol_serum_transposed[, c("ID", setdiff(names(metabol_serum_transposed), "ID"))]
-
-# ID is the first column, and the layout is preserved
-kable(head(metabol_serum_transposed), align = "c", digits = 2, format = "pipe")
+metabol_serum_transposed <- metabol_serum_transposed[, c("ID", setdiff(names(metabol_serum_transposed), "ID"))] # ID is the first column, and the layout is preserved
 
 # specific covariates
 load("/Users/allison/Library/CloudStorage/GoogleDrive-aflouie@usc.edu/My Drive/HELIX_data/HELIX.RData")
@@ -2123,28 +1949,26 @@ selected_id_data <- cbind(outcome_and_cov, extracted_exposome)
 combined_data <- merge(selected_id_data, metabol_serum_transposed, by = "ID", all = TRUE)
 
 selected_metabolomics_data <- combined_data %>% dplyr::select(-c(ID))
-head(selected_metabolomics_data)
+selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
 ```
 
 ### Group LASSO
 
 ```{r full group lasso, warning=FALSE}
-selected_metabolomics_data <- selected_metabolomics_data %>% na.omit()
-
 set.seed(101)
 trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7, list = FALSE, times = 1)
 metabol_train_data <- selected_metabolomics_data[trainIndex,]
 metabol_test_data  <- selected_metabolomics_data[-trainIndex,]
 
-x_train <- model.matrix(hs_zbmi_who ~ . -1, metabol_train_data)
-y_train <- metabol_train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ . -1, metabol_test_data)
-y_test <- metabol_test_data$hs_zbmi_who
+x_full_train <- model.matrix(hs_zbmi_who ~ . -1, metabol_train_data)
+y_full_train <- metabol_train_data$hs_zbmi_who
+x_full_test <- model.matrix(hs_zbmi_who ~ . -1, metabol_test_data)
+y_full_test <- metabol_test_data$hs_zbmi_who
 
 train_control <- trainControl(method = "cv", number = 10)
 
-penalty_factors <- rep(1, ncol(x_train))
-penalty_factors[colnames(x_train) %in% covariates_selected] <- 0
+penalty_factors <- rep(1, ncol(x_full_train))
+penalty_factors[colnames(x_full_train) %in% covariates_selected] <- 0
 
 num_covariates <- length(covariates_selected)
 num_diet <- length(diet_selected)
@@ -2158,27 +1982,27 @@ group_indices <- c(
   rep(4, num_metabolomics)    # Group 4: Metabolomics
 )
 
-if (length(group_indices) < ncol(x_train)) {
-  group_indices <- c(group_indices, rep(5, ncol(x_train) - length(group_indices)))
+if (length(group_indices) < ncol(x_full_train)) {
+  group_indices <- c(group_indices, rep(5, ncol(x_full_train) - length(group_indices)))
 }
 
-length(group_indices) == ncol(x_train)  # this should be TRUE
+#length(group_indices) == ncol(x_full_train) # should be true
 
 # fit group lasso model
 set.seed(101)
-group_lasso_model <- grpreg(x_train, y_train, group = group_indices, penalty = "grLasso", penalty.factor = penalty_factors, family = "gaussian")
+group_lasso_model <- grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grLasso", penalty.factor = penalty_factors, family = "gaussian")
 
-group_lasso_predictions <- predict(group_lasso_model, x_test, type = "response")
+group_lasso_predictions <- predict(group_lasso_model, x_full_test, type = "response")
 
-mse_group_lasso <- mean((y_test - group_lasso_predictions)^2)
+mse_group_lasso <- mean((y_full_test - group_lasso_predictions)^2)
 rmse_group_lasso <- sqrt(mse_group_lasso)
 
 cat("Group Lasso Test RMSE:", rmse_group_lasso, "\n")
 ```
 
-```{r}
+```{r group lasso cv, warning = FALSE}
 set.seed(101)
-cv_group_lasso <- cv.grpreg(x_train, y_train, group = group_indices, penalty = "grLasso", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
+cv_group_lasso <- cv.grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grLasso", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
 
 cat("Optimal lambda:", cv_group_lasso$lambda.min, "\n")
 
@@ -2193,30 +2017,30 @@ sig_vars_lasso_df <- data.frame(
 )
 sig_vars_lasso_df
 
-group_lasso_predictions <- predict(cv_group_lasso, x_test, s = "lambda.min", type = "response")
+group_lasso_predictions <- predict(cv_group_lasso, x_full_test, s = "lambda.min", type = "response")
 
-mse_group_lasso <- mean((y_test - group_lasso_predictions)^2)
+mse_group_lasso <- mean((y_full_test - group_lasso_predictions)^2)
 rmse_group_lasso <- sqrt(mse_group_lasso)
 cat("Group LASSO RMSE with 10-fold CV:", rmse_group_lasso, "\n")
 ```
 
-Group Lasso performs well with the lowest test RMSE and CV RMSE among the penalized regression models. The smaller optimal lambda indicates that fewer variables are being selected, resulting in a more parsimonious model with important predictors. This model balances variable selection and prediction accuracy effectively.
+The group LASSO model for predicting BMI Z-score using diet, chemical, metabolomic data, and covariates produced an RMSE of 0.9334 on the test set and an improved RMSE of 0.8748 with 10-fold cross-validation. The optimal lambda for this model was found to be 0.014. The model identified several key metabolites with significant coefficients. On the positive side, metabolite 161 had the highest positive coefficient (2.8164), followed by metabolites 95 (1.3657), 88 (0.8329), 59 (0.7794), and 124 (0.7499). These positive coefficients suggest that higher levels of these metabolites are associated with an increase in BMI Z-score. Conversely, metabolite 160 had the highest negative coefficient (-3.2241), indicating a strong negative association with BMI Z-score, followed by metabolites 89 (-1.8773), 82 (-1.4959), 138 (-1.0762), and 125 (-1.0322). These negative coefficients indicate that higher levels of these metabolites are associated with a decrease in BMI Z-score.
 
 ### Group Ridge
 
 ```{r full group ridge, warning = FALSE}
 set.seed(101)
-group_ridge_model <- grpreg(x_train, y_train, group = group_indices, penalty = "grMCP", penalty.factor = penalty_factors, family = "gaussian")
-group_ridge_predictions <- predict(group_ridge_model, x_test, type = "response")
-mse_group_ridge <- mean((y_test - group_ridge_predictions)^2)
+group_ridge_model <- grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grMCP", penalty.factor = penalty_factors, family = "gaussian")
+group_ridge_predictions <- predict(group_ridge_model, x_full_test, type = "response")
+mse_group_ridge <- mean((y_full_test - group_ridge_predictions)^2)
 rmse_group_ridge <- sqrt(mse_group_ridge)
 cat("Group Ridge RMSE:", rmse_group_ridge, "\n")
 ```
 
-```{r}
+```{r group ridge cv, warning = FALSE}
 set.seed(101)
 
-cv_group_ridge_model <- cv.grpreg(x_train, y_train, group = group_indices, penalty = "grMCP", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
+cv_group_ridge_model <- cv.grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grMCP", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
 
 cat("Optimal lambda:", cv_group_ridge_model$lambda.min, "\n")
 
@@ -2231,30 +2055,30 @@ sig_vars_ridge_df <- data.frame(
 )
 sig_vars_ridge_df
 
-group_ridge_predictions <- predict(cv_group_ridge_model, x_test, s = "lambda.min", type = "response")
+group_ridge_predictions <- predict(cv_group_ridge_model, x_full_test, s = "lambda.min", type = "response")
 
-mse_group_ridge <- mean((y_test - group_ridge_predictions)^2)
+mse_group_ridge <- mean((y_full_test - group_ridge_predictions)^2)
 rmse_group_ridge <- sqrt(mse_group_ridge)
 cat("Group Ridge RMSE with 10-fold CV:", rmse_group_ridge, "\n")
 ```
 
-Group Ridge has slightly higher RMSE values compared to Group Lasso. The optimal lambda is higher, indicating more variables are included in the model. Ridge regression typically shrinks coefficients but includes all variables, which might result in less interpretability but robust predictions.
+The group ridge model's optimal lambda value identified through cross-validation was 0.024, which balances the model's complexity and fit. The top five positive coefficients include metabolomic variables: metab_161, metab_95, metab_90, metab_59, and metab_177, suggesting these metabolites are positively associated with the outcome. Conversely, the top five negative coefficients, metab_160, metab_89, metab_82, metab_135, and metab_138, indicate a negative association with BMI Z-score. The model's RMSE for the test set was 0.942, and the RMSE with 10-fold cross-validation was 0.885, demonstrating good predictive performance and suggesting the inclusion of these variables captures significant variance related to BMI Z-score.
 
 ### Group Elastic Net
 
 ```{r full group enet, warning = FALSE}
 set.seed(101)
-group_enet_model <- grpreg(x_train, y_train, group = group_indices, penalty = "grSCAD", penalty.factor = penalty_factors, family = "gaussian")
-group_enet_predictions <- predict(group_enet_model, x_test, type = "response")
-mse_group_enet <- mean((y_test - group_enet_predictions)^2)
+group_enet_model <- grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grSCAD", penalty.factor = penalty_factors, family = "gaussian")
+group_enet_predictions <- predict(group_enet_model, x_full_test, type = "response")
+mse_group_enet <- mean((y_full_test - group_enet_predictions)^2)
 rmse_group_enet <- sqrt(mse_group_enet)
 cat("Group Elastic Net RMSE:", rmse_group_enet, "\n")
 ```
 
-```{r}
+```{r group enet cv, warning = FALSE}
 set.seed(101)
 
-cv_group_enet_model <- cv.grpreg(x_train, y_train, group = group_indices, penalty = "grSCAD", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
+cv_group_enet_model <- cv.grpreg(x_full_train, y_full_train, group = group_indices, penalty = "grSCAD", penalty.factor = penalty_factors, family = "gaussian", nfolds = 10)
 
 cat("Optimal lambda:", cv_group_enet_model$lambda.min, "\n")
 
@@ -2269,14 +2093,14 @@ sig_vars_enet_df <- data.frame(
 )
 sig_vars_enet_df
 
-group_enet_predictions <- predict(cv_group_enet_model, x_test, s = "lambda.min", type = "response")
+group_enet_predictions <- predict(cv_group_enet_model, x_full_test, s = "lambda.min", type = "response")
 
-mse_group_enet <- mean((y_test - group_enet_predictions)^2)
+mse_group_enet <- mean((y_full_test - group_enet_predictions)^2)
 rmse_group_enet <- sqrt(mse_group_enet)
 cat("Group Elastic Net RMSE with 10-fold CV:", rmse_group_enet, "\n")
 ```
 
-Group Elastic Net combines Lasso and Ridge penalties, resulting in similar performance to Group Ridge. It provides a balance between variable selection and coefficient shrinkage, but with slightly higher RMSE values than Group Lasso.
+The group elastic net model demonstrated an RMSE of 0.9441 on the test set, which improved to 0.8845 with 10-fold cross-validation, indicating a strong predictive performance. The optimal lambda value was 0.0185. The top five positive coefficients, reflecting variables with the strongest positive associations, included metabolomic variables metab_161, metab_95, metab_90, metab_59, and metab_177, with metab_161 showing the highest positive coefficient of 3.6039. Conversely, the variables metab_160, metab_89, metab_82, metab_135, and metab_138 had the most substantial negative associations, with metab_160 exhibiting the largest negative coefficient of -4.0738. These results suggest that these specific metabolites have significant associations with the BMI Z-scores, either increasing or decreasing them, which could provide insights into the biological pathways influencing BMI in children.
 
 ### Decision Trees
 
@@ -2290,10 +2114,10 @@ trainIndex <- createDataPartition(selected_metabolomics_data$hs_zbmi_who, p = .7
 train_data <- selected_metabolomics_data[ trainIndex,]
 test_data  <- selected_metabolomics_data[-trainIndex,]
 
-x_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
-y_train <- train_data$hs_zbmi_who
-x_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
-y_test <- test_data$hs_zbmi_who
+x_full_train <- model.matrix(hs_zbmi_who ~ ., train_data)[,-1]
+y_full_train <- train_data$hs_zbmi_who
+x_full_test <- model.matrix(hs_zbmi_who ~ ., test_data)[,-1]
+y_full_test <- test_data$hs_zbmi_who
 
 set.seed(101)
 fit_tree <- rpart(hs_zbmi_who ~ ., data = train_data, method = "anova")
@@ -2322,7 +2146,7 @@ rmse_pruned_tree <- sqrt(mse_pruned_tree)
 cat("Pruned Decision Tree RMSE:", rmse_pruned_tree, "\n")
 ```
 
-```{r}
+```{r full decision tree cv, warning = FALSE}
 set.seed(101)
 
 train_control <- trainControl(method = "cv", number = 10)
@@ -2359,7 +2183,7 @@ cat("Unpruned Decision Tree RMSE:", rmse_unpruned_tree, "\n")
 cat("Pruned Decision Tree RMSE with Best cp:", rmse_pruned_tree, "\n")
 ```
 
-Pruning improves the decision tree's performance, but it still has a higher RMSE compared to penalized regression models. Pruning helps to reduce overfitting but does not achieve the same level of predictive accuracy.
+The key variables identified include polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), metab_95, metab_129, and several metabolomics variables such as metab_161, metab_140, and metab_176. The unpruned model had an RMSE of 1.243, while the pruned model, which used the optimal cp value from cross-validation, had an RMSE of 1.128. This indicates that pruning improved the model's accuracy by reducing overfitting, resulting in better performance on the test data.
 
 ### Random Forest
 
@@ -2378,25 +2202,25 @@ rmse_rf <- sqrt(rf_mse)
 cat("Diet + Chemical + Metabolomic + Covariates Random Forest RMSE:", rmse_rf, "\n")
 
 rf_model <- train(
-  x_train, y_train,
+  x_full_train, y_full_train,
   method = "rf",
   trControl = train_control,
   tuneLength = 10
 )
 
-rf_predictions_cv <- predict(rf_model, x_test)
-mse_rf_cv <- mean((y_test - rf_predictions_cv)^2)
+rf_predictions_cv <- predict(rf_model, x_full_test)
+mse_rf_cv <- mean((y_full_test - rf_predictions_cv)^2)
 rmse_rf_cv <- sqrt(mse_rf_cv)
 
 cat("10-Fold CV Random Forest RMSE:", rmse_rf_cv, "\n")
 ```
 
-Random Forest performs better than the decision trees but worse than the penalized regression models. The consistent RMSE between the test and CV indicates stable performance. Random Forests are robust but may not capture the data's underlying patterns as effectively as the penalized regression models in this context.
+The IncNodePurity values indicate that "hs_pcb170_cadj_Log2" is the most influential variable, followed by "metab_95," "hs_pcb153_cadj_Log2," and "metab_8." The model has an RMSE of 1.0047 for the training set and 1.0048 for the 10-fold cross-validation, suggesting a consistent performance with minimal overfitting. Comparing the pruned and unpruned models, the pruned model with cross-validation resulted in a lower RMSE, indicating better generalization and reduced complexity without sacrificing accuracy. 
 
 ### GBM
 
 ```{r gbm fit, warning = FALSE}
-gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data, 
+gbm_model_full <- gbm(hs_zbmi_who ~ ., data = train_data, 
                  distribution = "gaussian",
                  n.trees = 1000,
                  interaction.depth = 3,
@@ -2404,40 +2228,249 @@ gbm_model <- gbm(hs_zbmi_who ~ ., data = train_data,
                  shrinkage = 0.01,
                  cv.folds = 5,
                  verbose = TRUE)
-summary(gbm_model)
+summary(gbm_model_full)
 
 # finding the best number of trees based on cross-validation
-best_trees <- gbm.perf(gbm_model, method = "cv")
-predictions_gbm <- predict(gbm_model, test_data, n.trees = best_trees)
-mse_gbm <- mean((y_test - predictions_gbm)^2)
-rmse_gbm <- sqrt(mse_gbm)
+best_trees_full <- gbm.perf(gbm_model_full, method = "cv")
+predictions_gbm_full <- predict(gbm_model_full, test_data, n.trees = best_trees_full)
+mse_gbm_full <- mean((y_full_test - predictions_gbm_full)^2)
+rmse_gbm_full <- sqrt(mse_gbm_full)
 
-cat("Diet + Chemical + Metabolomic + Covariates GBM RMSE:", rmse_gbm, "\n")
+cat("Diet + Chemical + Metabolomic + Covariates GBM RMSE:", rmse_gbm_full, "\n")
 
-gbm_model <- train(
-  x_train, y_train,
+gbm_model_full <- train(
+  x_full_train, y_full_train,
   method = "gbm",
   trControl = train_control,
   tuneLength = 10,
   verbose = FALSE
 )
 
-gbm_predictions_cv <- predict(gbm_model, x_test)
-mse_gbm_cv <- mean((y_test - gbm_predictions_cv)^2)
+gbm_predictions_cv <- predict(gbm_model_full, x_full_test)
+mse_gbm_cv <- mean((y_full_test - gbm_predictions_cv)^2)
 rmse_gbm_cv <- sqrt(mse_gbm_cv)
 
 cat("10-Fold CV GBM RMSE:", rmse_gbm_cv, "\n")
 ```
 
-```{r gbm model top 5 visual, warning = FALSE, include = FALSE}
-# Get the summary of the model to extract feature importance
-importance <- summary(gbm_model, n.trees = best_trees)
+The GBM model shows that the most influential variable is polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), followed by metab_95, metab_161, metab_8, and metab_49. The GBM model's RMSE is 0.954, indicating good predictive performance. The cross-validated RMSE is 0.953, showing consistent performance across different folds. The variables polychlorinated biphenyl-170 and metab_95 have the highest relative influence, suggesting significant roles in predicting the outcome.
 
-# Create a data frame for the top 5 features
-top5_importance <- importance[1:5, ]
+### **Model Comparison:**
 
-# Plot the top 5 features
-ggplot(top5_importance, aes(x = reorder(var, rel.inf), y = rel.inf)) +
+In the model comparison for the diet, chemical, metabolomic, and covariates dataset, the GBM performed the best with an RMSE of 0.9537, closely followed by the group LASSO model with an RMSE of 0.8748. The random forest model also showed strong performance with an RMSE of 1.0047. Key variables that consistently appeared across the models as important predictors include specific metabolites (metab_161, metab_95, metab_160, metab_8) and chemical exposure variables (hs_pcb170_cadj_Log2, hs_pbde153_cadj_Log2). These variables highlight the critical influence of specific PCB levels and metabolites in predicting health outcomes.
+
+# Conclusion
+
+## Overall Findings
+
+Throughout the analysis, specific variables consistently emerged as significant predictors of BMI Z-scores in children. Variables such as polychlorinated biphenyl-170 (hs_pcb170_cadj_Log2), polybrominated diphenyl ether-153 (hs_pbde153_cadj_Log2), and various metabolites (metab_161, metab_95, metab_160) were highlighted across multiple models, indicating their strong influence on the outcome. Notably, higher levels of copper (hs_cu_c_Log2) and certain metabolites (metab_161, metab_95) were consistently associated with an increased BMI Z-score, suggesting their role in contributing to higher BMI. Conversely, variables such as cadmium (hs_cd_c_Log2) and specific metabolites (metab_160, metab_89) showed negative associations with BMI Z-score, indicating a potential protective effect against increased BMI. These findings imply that both environmental chemical exposures and specific metabolic profiles play crucial roles in childhood BMI outcomes, emphasizing the need for comprehensive interventions targeting these factors to mitigate obesity risk and promote healthier growth trajectories.
+
+The LASSO, ridge, and elastic net models consistently demonstrated strong performance across various datasets, achieving the lowest RMSEs, particularly when including diet, chemical, metabolomic, and covariates. The incorporation of metabolomic data significantly enhanced model performance, underscoring their predictive power concerning BMI. Decision trees generally exhibited moderate performance, with pruning enhancing RMSE values. Nonetheless, the full decision tree models were less effective compared to regularized regression models. Random Forest and GBM models exhibited robust performance, with GBM marginally surpassing Random Forest. The integration of diverse data types (diet, chemical, metabolomic) led to improved RMSE values, showcasing the advantage of a comprehensive data approach.
+
+Among the models tested, the GBM with all variables exhibited the best overall performance with an RMSE of 0.9537, closely followed by the group LASSO model with an RMSE of 0.8748, demonstrating superior predictive accuracy and generalization capabilities.
+
+The results imply that certain environmental chemicals and metabolites play crucial roles in influencing BMI Z-scores in children. The high predictive accuracy of models like GBM and group LASSO underscores the importance of these variables. Higher levels of certain metabolites and chemical exposures were associated with significant changes in BMI Z-scores, suggesting potential areas for intervention to manage or mitigate obesity in children. The findings indicate that environmental and dietary factors, alongside inherent covariates like age, have substantial impacts on children's health outcomes, specifically BMI.
+
+## Limitations & Future
+
+One of the limitations of this study is the exclusion of 103 rows with missing values from the combined dataset, which represents approximately 8% of the total data. This decision was made to ensure the integrity and robustness of our analysis, as many statistical methods and machine learning algorithms require complete data. However, this exclusion may have introduced some issues. The excluded rows might have specific characteristics that differ from the rest of the dataset. As a result, the cleaned dataset may not fully capture the diversity and variability of the original population, potentially limiting the representativeness of the study's findings. In future studies, alternative methods such as imputation techniques could be explored to handle missing data, potentially preserving more information and reducing the risk of bias.
+
+Some covariates related to pregnancy, such as sex and year of birth, were included in the analysis as they were considered potentially relevant. However, their direct relevance to the specific outcomes studied might be limited, which could introduce some noise or confounding effects. There may have been other variables that might have been relevant but have been overlooked in this study. So for future studies, it might be possible to look at the impact of other potential covariates and confounders on the outcomes of interest.
+
+# References
+
+Caspersen, I. H. et al. (2016). Determinants of persistent organic pollutant concentrations in plasma from 300 Norwegian women and their 3-year-old children. Environmental Research, 146, 18-26. DOI: [10.1016/j.envres.2015.12.008](https://doi.org/10.1016/j.envres.2015.12.008){.uri}
+
+Junge, K. M. et al. (2018). MEST mediates the impact of prenatal bisphenol A exposure on long-term body weight development. Clinical Epigenetics, 10(1), 58. DOI: [10.1186/s13148-018-0478-z](https://doi.org/10.1186/s13148-018-0478-z){.uri}
+
+Harley, K. G. et al. (2013). Association of prenatal and childhood PBDE and PCB exposures with timing of puberty in boys and girls. Environmental International, 51, 264-272. DOI: [10.1016/j.envint.2012.10.007](https://doi.org/10.1016/j.envint.2012.10.007){.uri}
+
+# Appendices
+
+## Selected Diet Variable Summary
+
+```{r categorical diet, warning=FALSE}
+categorical_diet <- dietary_exposome %>% 
+  dplyr::select(where(is.factor))
+
+categorical_diet_long <- pivot_longer(
+  categorical_diet,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_categorical_vars <- unique(categorical_diet_long$variable)
+categorical_plots <- lapply(unique_categorical_vars, function(var) {
+  data <- filter(categorical_diet_long, variable == var)
+  
+  p <- ggplot(data, aes(x = value, fill = value)) +
+    geom_bar(stat = "count") +
+    labs(title = paste("Distribution of", var), x = var, y = "Count")
+  
+  print(p)
+  return(p)
+})
+```
+
+Breastfeeding Duration: Majority of observations are in the highest duration category, suggesting longer breastfeeding periods are common.
+
+Bakery Products: Shows a relatively even distribution across the three categories, indicating varied consumption levels of bakery products among participants.
+
+Breakfast Cereal: The highest category of cereal consumption is the most common, suggesting a preference for or greater consumption of cereals.
+
+Dairy: Shows a fairly even distribution across all categories, indicating a uniform consumption pattern of dairy products.
+
+Fast Food: Most participants fall into the middle category, indicating moderate consumption of fast food.
+
+Organic Food: Most participants either consume a lot of or no organic food, with fewer in the middle range.
+
+Processed Meat: Consumption levels are fairly evenly distributed, indicating varied dietary habits regarding processed meats.
+
+Bread: Distribution shows a significant leaning towards higher bread consumption.
+
+Cereal: Even distribution across categories suggests varied cereal consumption habits.
+
+Fish and Seafood: Even distribution across categories, indicating varied consumption of fish and seafood.
+
+Fruits: High fruit consumption is the most common, with fewer participants in the lowest category.
+
+Added Fats: More participants consume added fats at the lowest and highest levels, with fewer in the middle.
+
+Sweets: High consumption of sweets is the most common, indicating a preference for or higher access to sugary foods.
+
+Vegetables: Most participants consume a high amount of vegetables.
+
+## Selected Chemical Variable Summary
+
+```{r numeric chemicals, warning=FALSE}
+#separate numeric and categorical data
+numeric_chemical <- chemical_exposome %>% 
+  dplyr::select(where(is.numeric))
+
+numeric_chemical_long <- pivot_longer(
+  numeric_chemical,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_numerical_vars <- unique(numeric_chemical_long$variable)
+
+num_plots <- lapply(unique_numerical_vars, function(var) {
+  data <- filter(numeric_chemical_long, variable == var)
+  p <- ggplot(data, aes(x = value)) +
+    geom_histogram(bins = 30, fill = "blue") +
+    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
+  print(p)
+  return(p)
+})
+```
+
+Cadmium (hs_cd_c_Log2): The histogram for cadmium exposure shows a relatively symmetric distribution centered around 4 on the log2 scale. Most values range from approximately 3 to 5, with few outliers.
+
+Cobalt (hs_co_c_Log2): The histogram of cobalt levels displays a roughly normal distribution centered around a slight positive skew, peaking around 3.5.
+
+Cesium (hs_cs_c_Log2): Exhibits a right-skewed distribution, indicating that most participants have relatively low exposure levels, but a small number have substantially higher exposures. Majority of the data centered around 1.5 to 2.5
+
+Copper (hs_cu_c_Log2): Shows a right-skewed distribution, suggesting that while most individuals have moderate exposure, a few experience significantly higher levels of copper.
+
+Mercury (hs_hg_c_Log2): This distribution is also right-skewed, common for environmental pollutants, where a majority have lower exposure levels, and a minority have high exposure levels.
+
+Molybdenum (hs_mo_c_Log2): Shows a distribution with a sharp peak and a long right tail, suggesting that while most people have similar exposure levels, a few have exceptionally high exposures. Has a sharp peak around 6, indicating that most values fall within a narrow range.
+
+Lead (hs_pb_c_Log2): The distribution is slightly right-skewed, indicating higher exposure levels in a smaller group of the population compared to the majority.
+
+DDE (hs_dde_cadj_Log2): Shows a pronounced right skew, typical for chemicals that accumulate in the environment and in human tissues, indicating higher levels of exposure in a smaller subset of the population..
+
+PCB 153 (hs_pcb153_cadj_Log2): Has a distribution with right skewness, suggesting that exposure to these compounds is higher among a smaller segment of the population. Bimodal, indicating two peaks around 2 and 4.
+
+PCB 170 (hs_pcb170_cadj_Log2): This histograms show a significant right skew, indicating lower concentrations of these chemicals in most samples, with fewer samples showing higher concentrations. This pattern suggests that while most individuals have low exposure, a few may have considerably higher levels.
+
+DEP (hs_dep_cadj_Log2): DEP exposure has a sharp peak around 6, indicating a narrow distribution of values.
+
+PBDE 153 (hs_pbde153_cadj_Log2): This histogram shows a bimodal distribution, with peaks around 1 and 4.
+
+PFHxS: Distribution peaks around 5 with a broad spread, indicating variation in PFHxS levels.
+
+PFOA: Shows a peak around 6 with a symmetrical distribution, indicating consistent PFOA levels.
+
+PFOS: Similar to PFOA, the distribution peaks around 6, indicating consistent PFOS levels.
+
+Propyl Paraben (hs_prpa_cadj_Log2): The distribution peaks around 6 with a broad spread, indicating variability in propyl paraben levels.
+
+Monobenzyl Phthalate (hs_mbzp_cadj_Log2): This histogram shows a right-skewed distribution. Most values cluster at the lower end, indicating a common lower exposure level among subjects, with a long tail towards higher values suggesting occasional higher exposures. Shows a broad distribution with a peak around 4, indicating variation in monobenzyl phthalate levels. Indicates consistent but varied exposure levels.
+
+Monoisobutyl Phthalate (hs_mibp_cadj_Log2): The distribution is right-skewed, similar to MBZP, but with a smoother decline. This pattern also indicates that while most subjects have lower exposure levels, a few experience significantly higher exposures.
+
+Mono-n-butyl Phthalate (hs_mnbp_cadj_Log2): Peaks around 4, indicating consistent exposure levels with some variation. Few outliers are present.
+
+## Selected Covariate Variable Summary
+
+```{r covariates numeric, warning=FALSE}
+#separate numeric and categorical data
+numeric_covariates <- covariate_data %>% 
+  dplyr::select(where(is.numeric))
+
+numeric_covariates_long <- pivot_longer(
+  numeric_covariates,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_numerical_vars <- unique(numeric_covariates_long$variable)
+
+num_plots <- lapply(unique_numerical_vars, function(var) {
+  data <- filter(numeric_covariates_long, variable == var)
+  p <- ggplot(data, aes(x = value)) +
+    geom_histogram(bins = 30, fill = "blue") +
+    labs(title = paste("Histogram of", var), x = "Value", y = "Count")
+  print(p)
+  return(p)
+})
+```
+
+Child's Age (hs_child_age): This histogram is multimodal, reflecting several peaks across different ages. This could be indicative of the data collection points or particular age groups being studied.
+
+```{r covariates categorical, warning=FALSE}
+categorical_covariates <- covariate_data %>% 
+  dplyr::select(where(is.factor))
+
+categorical_covariates_long <- pivot_longer(
+  categorical_covariates,
+  cols = everything(),
+  names_to = "variable",
+  values_to = "value"
+)
+
+unique_categorical_vars <- unique(categorical_covariates_long$variable)
+categorical_plots <- lapply(unique_categorical_vars, function(var) {
+  data <- filter(categorical_covariates_long, variable == var)
+  
+  p <- ggplot(data, aes(x = value, fill = value)) +
+    geom_bar(stat = "count") +
+    labs(title = paste("Distribution of", var), x = var, y = "Count")
+  
+  print(p)
+  return(p)
+})
+```
+
+Gender Distribution (e3_sex): The gender distribution is nearly balanced with a slight higher count for males compared to females.
+
+Year of Birth (e3_yearbir): This chart shows that the majority of subjects were born in the later years, with a significant increase in 2009, indicating perhaps a larger recruitment or a specific cohort focus that year.
+
+## Full Model Gradient Boosting Machine Top 5 Variables
+
+```{r full gbm model top 5 visual, warning = FALSE}
+# summary of the model to extract feature importance
+importance_full <- summary(gbm_model_full, n.trees = best_trees)
+
+#data frame for the top 5 features
+top5_importance_full <- importance_full[1:5, ]
+
+ggplot(top5_importance_full, aes(x = reorder(var, rel.inf), y = rel.inf)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +
   labs(title = "Top 5 Most Important Features in GBM Model",
@@ -2445,24 +2478,20 @@ ggplot(top5_importance, aes(x = reorder(var, rel.inf), y = rel.inf)) +
        y = "Relative Importance")
 ```
 
-GBM performs well with RMSE values close to the penalized regression models, particularly Group Elastic Net and Ridge. GBM's iterative boosting process helps improve predictive accuracy, but it still falls slightly short of the performance of Group Lasso.
-
-**Model Comparison**
-
-Group Lasso has the lowest RMSE values, indicating the best predictive performance and effective variable selection. Group Ridge, Group Elastic Net, and GBM also perform well, with RMSE values close to Group Lasso. These models offer a balance between prediction accuracy and interpretability. Decision Trees and Random Forests are less effective for this particular dataset and problem.
-
-# Overall Comparison of RMSE
+## Overall Comparison of RMSE
 
 ```{r OVERALL, warning = FALSE}
 results <- data.frame(
   Model = rep(c("Lasso", "Ridge", "Elastic Net", "Decision Tree", "Random Forest", "GBM"), each = 5),
   Data_Set = rep(c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"), 6),
-  RMSE = c(1.152, 1.139, 1.041, 1.131, 0.875,
-           1.149, 1.129, 1.035, 1.033, 0.885,
-           1.152, 1.139, 1.035, 1.032, 0.885,
-           1.155, 1.149, 1.090, 1.090, 1.128,
-           1.155, 1.129, 1.032, 1.026, 1.005,
-           1.150, 1.136, 1.040, 1.048, 0.953)
+  RMSE = c(
+    1.152017, 1.139468, 1.040727, 1.031241, 0.8748226, # Lasso
+    1.149128, 1.129036, 1.035411, 1.03338, 0.8849928,  # Ridge
+    1.152017, 1.138767, 1.035456, 1.032168, 0.8844928, # Elastic Net
+    1.155427, 1.152094, 1.089746, 1.089746, 1.127666, # Decision Tree
+    1.154789, 1.129478, 1.031669, 1.025544, 1.004854, # Random Forest
+    1.149695, 1.136542, 1.040439, 1.048183, 0.9526345  # GBM
+  )
 )
 
 results$Data_Set <- factor(results$Data_Set, levels = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"))
@@ -2472,8 +2501,10 @@ rmse_plot <- ggplot(results, aes(x = Data_Set, y = RMSE, fill = Model)) +
   labs(title = "Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-print(rmse_plot)
+rmse_plot
 ```
+
+## Comparison of LASSO Models' RMSE
 
 ```{r LASSO, warning = FALSE}
 # filter results for Lasso model
@@ -2484,8 +2515,10 @@ rmse_lasso_plot <- ggplot(lasso_results, aes(x = Data_Set, y = RMSE, fill = Data
   labs(title = "Lasso Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_lasso_plot)
+rmse_lasso_plot
 ```
+
+## Comparison of Ridge Models' RMSE
 
 ```{r RIDGE, warning = FALSE}
 # filter results for ridge model
@@ -2496,8 +2529,10 @@ rmse_ridge_plot <- ggplot(ridge_results, aes(x = Data_Set, y = RMSE, fill = Data
   labs(title = "Ridge Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_ridge_plot)
+rmse_ridge_plot
 ```
+
+## Comparison of Elastic Net Models' RMSE
 
 ```{r ENET, warning = FALSE}
 # filter results for elastic net model
@@ -2508,69 +2543,61 @@ rmse_enet_plot <- ggplot(enet_results, aes(x = Data_Set, y = RMSE, fill = Data_S
   labs(title = "Elastic Net Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_enet_plot)
+rmse_enet_plot
 ```
 
-```{r DECISION TREE, warning = FALSE}
-# filter results for decision tree model
-tree_results <- subset(results, Model == "Decision Tree")
+## Comparison of Decision Tree Models' RMSE
 
-rmse_tree_plot <- ggplot(lasso_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
+```{r DECISION TREE, warning = FALSE}
+tree_results <- data.frame(
+  Data_Set = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"),
+  RMSE = c(1.155427, 1.152094, 1.089746, 1.089746, 1.127666)
+)
+
+tree_results$Data_Set <- factor(tree_results$Data_Set, levels = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"))
+
+rmse_tree_plot <- ggplot(tree_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   labs(title = "Decision Tree Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_tree_plot)
+rmse_tree_plot
 ```
+
+## Comparison of Random Forest Models' RMSE
 
 ```{r RANDOM FOREST, warning = FALSE}
 # filter results for random forest model
-rf_results <- subset(results, Model == "Random Forest")
+rf_results <- data.frame(
+  Data_Set = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"),
+  RMSE = c(1.154789, 1.129478, 1.031669, 1.025544, 1.004854)
+)
+
+rf_results$Data_Set <- factor(tree_results$Data_Set, levels = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"))
 
 rmse_rf_plot <- ggplot(rf_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   labs(title = "Random Forest Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_rf_plot)
+rmse_rf_plot
 ```
+
+## Comparison of Gradient Boost Machine Models' RMSE
 
 ```{r GBM, warning = FALSE}
 # filter results for elastic net model
-gbm_results <- subset(results, Model == "GBM")
+gbm_results <- data.frame(
+  Data_Set = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"),
+  RMSE = c(1.149695, 1.136542, 1.040439, 1.048183, 0.9526345)
+)
+
+gbm_results$Data_Set <- factor(gbm_results$Data_Set, levels = c("Covariates", "Diet + Covariates", "Chemicals + Covariates", "Diet + Chemical + Covariates", "Diet + Chemical + Metabolomic + Covariates"))
 
 rmse_gbm_plot <- ggplot(gbm_results, aes(x = Data_Set, y = RMSE, fill = Data_Set)) +
   geom_bar(stat = "identity", position = position_dodge()) +
-  labs(title = "GBM Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
+  labs(title = "Gradient Boost Machine Model RMSE Comparison", x = "Data Set", y = "Root Mean Squared Error") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-print(rmse_gbm_plot)
+rmse_gbm_plot
 ```
-
-# Conclusion
-
-## Overall Findings
-
-**Group Lasso, Ridge, and Elastic Net Models**:
-
--   Consistently performed well across different variable sets, with the lowest RMSEs observed in the full model including diet, chemical, metabolomic, and covariates.
-
--   The addition of metabolomic data significantly improved model performance, suggesting their strong predictive power in relation to BMI.
-
-**Decision Trees**:
-
--   Showed moderate performance, with pruning improving RMSE values.
-
--   The full decision tree models were less effective compared to regularized regression models.
-
-**Random Forest and GBM**:
-
--   Demonstrated robust performance, with GBM slightly outperforming Random Forest.
-
--   The inclusion of diverse data types (diet, chemical, metabolomic) led to improved RMSE values, highlighting the benefit of a comprehensive data approach.
-
-Overall, a combined approach leveraging demographic, dietary, chemical, and metabolomic data provides the most accurate predictions for BMI, with regularized regression techniques (Lasso, Ridge, Elastic Net) and ensemble methods (Random Forest, GBM) offering the best performance.
-
-## Limitations
-
-## Future
